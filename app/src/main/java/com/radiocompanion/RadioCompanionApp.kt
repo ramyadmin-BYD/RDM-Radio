@@ -1,0 +1,73 @@
+package com.radiocompanion
+
+import android.app.Application
+import androidx.room.Room
+import coil.ImageLoader
+import coil.ImageLoaderFactory
+import coil.memory.MemoryCache
+import com.radiocompanion.data.local.AppDatabase
+import com.radiocompanion.data.remote.PlaylistResolver
+import com.radiocompanion.data.remote.RadioBrowserApi
+import com.radiocompanion.data.repository.StationRepository
+import com.radiocompanion.data.settings.SettingsStore
+import com.radiocompanion.service.audio.AudioEffectsController
+import kotlinx.serialization.json.Json
+import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
+
+/** Application + a small manual DI container (swap for Hilt if the app grows). */
+class RadioCompanionApp : Application(), ImageLoaderFactory {
+
+    val json: Json by lazy {
+        Json {
+            ignoreUnknownKeys = true   // tolerate radio-browser / newer backup fields
+            encodeDefaults = true
+            prettyPrint = true         // human-readable JSON exports
+        }
+    }
+
+    /** One shared HTTP client: API calls, station logos and the audio streams. */
+    val http: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .addInterceptor { chain ->
+                chain.proceed(
+                    chain.request().newBuilder()
+                        .header("User-Agent", "RDMRadio/${BuildConfig.VERSION_NAME}")
+                        .build()
+                )
+            }
+            .build()
+    }
+
+    val database: AppDatabase by lazy {
+        Room.databaseBuilder(this, AppDatabase::class.java, AppDatabase.NAME)
+            .addMigrations(AppDatabase.MIGRATION_1_2, AppDatabase.MIGRATION_2_3)
+            .build()
+    }
+
+    val settings: SettingsStore by lazy { SettingsStore(this) }
+
+    /** Equalizer / Loudness / makeup gain, shared by the playback service and the UI. */
+    val audioEffects: AudioEffectsController by lazy { AudioEffectsController(this, settings) }
+
+    val repository: StationRepository by lazy {
+        StationRepository(
+            context = this,
+            db = database,
+            api = RadioBrowserApi(http, json),
+            resolver = PlaylistResolver(http),
+            json = json,
+        )
+    }
+
+    /** Small image cache: head units have little RAM and BYD kills memory-hungry apps. */
+    override fun newImageLoader(): ImageLoader =
+        ImageLoader.Builder(this)
+            .okHttpClient(http)
+            .memoryCache { MemoryCache.Builder(this).maxSizePercent(0.10).build() }
+            .crossfade(false)
+            .build()
+}

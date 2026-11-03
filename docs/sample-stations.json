@@ -1,0 +1,24 @@
+{
+  "formatVersion": 2,
+  "exportedAtEpochMs": 0,
+  "stations": [
+    {
+      "id": "eg-nogoum-fm",
+      "name": "Nogoum FM 100.6",
+      "streamUrl": "https://audio.nrpstream.com/listen/nogoumfm/radio.mp3",
+      "backupStreamUrls": [],
+      "country": "EG",
+      "isOfficialFm": true,
+      "logoUrl": null,
+      "isFavorite": true
+    },
+    {
+      "id": "eg-example-web",
+      "name": "Example Web Radio (Egypt)",
+      "streamUrl": "https://stream.example.com/live.mp3",
+      "country": "EG",
+      "isOfficialFm": false,
+      "isFavorite": true
+    }
+  ]
+}

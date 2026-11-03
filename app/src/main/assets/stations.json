@@ -1,0 +1,18 @@
+{
+  "formatVersion": 2,
+  "exportedAtEpochMs": 0,
+  "stations": [
+    {
+      "id": "eg-nogoum-fm",
+      "name": "Nogoum FM 100.6",
+      "streamUrl": "https://audio.nrpstream.com/listen/nogoumfm/radio.mp3",
+      "backupStreamUrls": [],
+      "country": "EG",
+      "isOfficialFm": true,
+      "logoUrl": null,
+      "tags": "egypt,arabic,pop",
+      "codec": "MP3",
+      "isFavorite": true
+    }
+  ]
+}

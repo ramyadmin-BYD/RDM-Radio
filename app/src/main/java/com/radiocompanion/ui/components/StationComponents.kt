@@ -1,0 +1,300 @@
+package com.radiocompanion.ui.components
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Radio
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.radiocompanion.model.Station
+import com.radiocompanion.service.NowPlaying
+import com.radiocompanion.ui.theme.CarDimens
+
+@Composable
+fun StationGrid(
+    stations: List<Station>,
+    currentId: String?,
+    onSelect: (Int) -> Unit,
+    onFavorite: (Station) -> Unit,
+    onLongPress: (Station) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 260.dp),   // ~4 columns landscape, 2 portrait/docked
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        itemsIndexed(stations, key = { _, s -> s.id }) { index, station ->
+            StationTile(
+                station = station,
+                selected = station.id == currentId,
+                onClick = { onSelect(index) },
+                onFavorite = { onFavorite(station) },
+                onLongPress = { onLongPress(station) },
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun StationTile(
+    station: Station,
+    selected: Boolean,
+    onClick: () -> Unit,
+    onFavorite: () -> Unit,
+    onLongPress: () -> Unit,
+) {
+    val shape = RoundedCornerShape(20.dp)
+    val colors = MaterialTheme.colorScheme
+    Surface(
+        shape = shape,
+        color = if (selected) colors.surfaceVariant else colors.surface,
+        border = if (selected) BorderStroke(3.dp, colors.primary) else null,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(CarDimens.TileHeight)
+            .clip(shape)
+            .combinedClickable(onClick = onClick, onLongClick = onLongPress),
+    ) {
+        Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            StationLogo(station.logoUrl, size = 72.dp)
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    station.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TypeBadge(station)
+                    val subtitle = buildList {
+                        addAll(station.tags.split(',').map { it.trim() }.filter { it.isNotEmpty() }.take(2))
+                        if (station.bitrate > 0) add("${station.bitrate} kbps")
+                    }.joinToString(" · ")
+                    if (subtitle.isNotEmpty()) {
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            subtitle,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = colors.onSurfaceVariant,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+            IconButton(onClick = onFavorite, modifier = Modifier.size(CarDimens.MinTouch)) {
+                Icon(
+                    if (station.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                    contentDescription = if (station.isFavorite) "Remove from favorites" else "Add to favorites",
+                    tint = if (station.isFavorite) colors.primary else colors.onSurfaceVariant,
+                    modifier = Modifier.size(34.dp),
+                )
+            }
+        }
+    }
+}
+
+/** Station type: "FM" = an FM broadcaster's online stream, "WEB" = web-only radio. */
+@Composable
+fun TypeBadge(station: Station) {
+    val official = station.isOfficialFm
+    val colors = MaterialTheme.colorScheme
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = if (official) colors.primary else colors.surfaceVariant,
+        contentColor = if (official) colors.onPrimary else colors.onSurfaceVariant,
+    ) {
+        Text(
+            if (official) "FM" else "WEB",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+        )
+    }
+}
+
+@Composable
+fun StationLogo(url: String?, size: Dp) {
+    Box(
+        Modifier
+            .size(size)
+            .clip(RoundedCornerShape(size / 5))
+            .background(MaterialTheme.colorScheme.surfaceVariant),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            Icons.Rounded.Radio, contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(size * 0.5f),
+        )
+        if (!url.isNullOrBlank()) {
+            // Drawn over the placeholder; broken logos simply leave the radio icon visible.
+            AsyncImage(
+                model = url, contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+    }
+}
+
+private fun statusLine(now: NowPlaying): String? = when {
+    now.hasError && now.wantsToPlay -> "Reconnecting…"
+    now.hasError -> "Unavailable: ${now.errorDetail ?: "stream failed"}. Tap play to retry."
+    now.isBuffering -> "Buffering…"
+    else -> now.streamTitle
+}
+
+@Composable
+fun NowPlayingPanel(
+    now: NowPlaying,
+    onPrevious: () -> Unit,
+    onPlayPause: () -> Unit,
+    onNext: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(modifier, shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface) {
+        Column(
+            Modifier.fillMaxSize().padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            StationLogo(now.artworkUri?.toString(), size = 150.dp)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    now.stationName.ifBlank { "Pick a station" },
+                    style = MaterialTheme.typography.displaySmall,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    statusLine(now) ?: " ",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = if (now.hasError) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+                )
+            }
+            TransportControls(now, onPrevious, onPlayPause, onNext, large = true)
+        }
+    }
+}
+
+@Composable
+fun MiniPlayerBar(
+    now: NowPlaying,
+    onPrevious: () -> Unit,
+    onPlayPause: () -> Unit,
+    onNext: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        modifier = modifier.fillMaxWidth().height(112.dp),
+    ) {
+        Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            StationLogo(now.artworkUri?.toString(), size = 72.dp)
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    now.stationName.ifBlank { "Pick a station" },
+                    style = MaterialTheme.typography.titleLarge,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                statusLine(now)?.let {
+                    Text(
+                        it, style = MaterialTheme.typography.labelLarge,
+                        color = if (now.hasError) MaterialTheme.colorScheme.error
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            TransportControls(now, onPrevious, onPlayPause, onNext, large = false)
+        }
+    }
+}
+
+@Composable
+fun TransportControls(
+    now: NowPlaying,
+    onPrevious: () -> Unit,
+    onPlayPause: () -> Unit,
+    onNext: () -> Unit,
+    large: Boolean,
+) {
+    val side = if (large) 88.dp else CarDimens.MinTouch
+    val main = if (large) CarDimens.PlayButton else 88.dp
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(if (large) 28.dp else 4.dp),
+    ) {
+        IconButton(onClick = onPrevious, modifier = Modifier.size(side)) {
+            Icon(Icons.Rounded.SkipPrevious, "Previous station", Modifier.size(side * 0.55f))
+        }
+        FilledIconButton(onClick = onPlayPause, modifier = Modifier.size(main), shape = CircleShape) {
+            if (now.isBuffering) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(main * 0.45f),
+                    strokeWidth = 4.dp,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                )
+            } else {
+                Icon(
+                    if (now.wantsToPlay) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    contentDescription = if (now.wantsToPlay) "Pause" else "Play",
+                    modifier = Modifier.size(main * 0.55f),
+                )
+            }
+        }
+        IconButton(onClick = onNext, modifier = Modifier.size(side)) {
+            Icon(Icons.Rounded.SkipNext, "Next station", Modifier.size(side * 0.55f))
+        }
+    }
+}

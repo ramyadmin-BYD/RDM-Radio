@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ===== Hardware features =====
+         DiLink is a tablet-style Android ROM, NOT Android Automotive OS.
+         Every feature is required="false" so the APK installs on DiLink, on
+         AAOS emulators and on a phone/tablet for testing. -->
+    <uses-feature android:name="android.hardware.type.automotive" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.hardware.wifi" android:required="false" />
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <!-- The Song L screen rotates: support both orientations -->
+    <uses-feature android:name="android.hardware.screen.landscape" android:required="false" />
+    <uses-feature android:name="android.hardware.screen.portrait" android:required="false" />
+
+    <!-- ===== Network ===== -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- ===== Background playback ===== -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Required when targetSdk >= 34; ignored on older DiLink bases -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- ExoPlayer WAKE_MODE_NETWORK keeps CPU + Wi-Fi awake while streaming -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Media notification; runtime prompt only on Android 13+ -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Lets the app ask to be excluded from battery/RAM cleanup (sideloaded app, not Play) -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+
+    <!--
+        Cleartext (http://) streams: many Egyptian/Arab Icecast servers have no HTTPS.
+        usesCleartextTraffic covers older ROMs; on Android 7+ network_security_config
+        decides, and it also allows cleartext. Both must stay "allowed".
+    -->
+    <application
+        android:name=".RadioCompanionApp"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
+        android:theme="@style/Theme.BYDRadioCompanion"
+        android:appCategory="audio"
+        android:supportsRtl="true"
+        android:resizeableActivity="true"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
+        tools:targetApi="35">
+
+        <!--
+            configChanges: rotating the screen or resizing in split-screen does NOT
+            recreate the Activity. Compose recomposes with the new size, so the
+            MediaController stays connected and nothing flickers.
+        -->
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:screenOrientation="unspecified"
+            android:resizeableActivity="true"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|density|uiMode|keyboard|keyboardHidden|navigation">
+
+            <!-- Smallest usable window when docked in DiLink split-screen -->
+            <layout
+                android:minWidth="360dp"
+                android:minHeight="320dp" />
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!-- Shows up in "music app" pickers -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.APP_MUSIC" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+
+            <!-- "Open with" for station playlists (.pls / .m3u / .m3u8) and
+                 station-list JSON backups, e.g. from a USB drive or the browser -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="audio/x-scpls" />
+                <data android:mimeType="audio/x-mpegurl" />
+                <data android:mimeType="audio/mpegurl" />
+                <data android:mimeType="application/vnd.apple.mpegurl" />
+                <data android:mimeType="application/json" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            Playback service. exported="true" so the system media center, the
+            steering-wheel buttons and the DiLink media widget can bind to the
+            MediaSession. foregroundServiceType="mediaPlayback" puts it at
+            near-foreground priority, which BYD's memory cleaner respects most.
+        -->
+        <service
+            android:name=".service.RadioPlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaLibraryService" />
+                <action android:name="androidx.media3.session.MediaSessionService" />
+                <!-- Legacy MediaBrowser clients (older system media widgets) -->
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>
+
+        <!-- Media button "play" after the process was killed → Media3 restarts the
+             service and calls onPlaybackResumption() to restore the last station. -->
+        <receiver
+            android:name="androidx.media3.session.MediaButtonReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>
