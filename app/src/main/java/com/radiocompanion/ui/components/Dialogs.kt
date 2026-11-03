@@ -293,3 +293,63 @@ fun DiagnosticsDialog(
         },
     )
 }
+
+/** ☰ → About: what the app does, version, and credits. */
+@Composable
+fun AboutDialog(versionName: String, onDismiss: () -> Unit) {
+    val features = listOf(
+        "Egyptian, regional (Arab world) and international stations, with Nogoum FM 100.6 built in",
+        "Favorites, your own stream links, and station list import/export",
+        "Automatic reconnect and backup stream addresses, with stream diagnostics",
+        "7-band equalizer with presets, Loudness and volume compensation",
+        "Background playback, steering-wheel controls, and pause for calls and navigation",
+        "Designed for the BYD DiLink 5.0 screen: landscape, portrait and split-screen",
+    )
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                Text("RDM Radio", style = MaterialTheme.typography.displaySmall)
+                Text(
+                    "Version $versionName",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        text = {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    "Internet radio for the BYD Song L and other DiLink 5.0 head units.",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                features.forEach { feature ->
+                    Row {
+                        Text("•  ", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
+                        Text(feature, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+                HorizontalDivider(Modifier.padding(vertical = 4.dp))
+                Text("Designed by", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    "Eng. Ramy Abdelaziz",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    "Station directory: radio-browser.info (community-run). Stream availability depends on each station.",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 56.dp)) {
+                Text("Close", style = MaterialTheme.typography.labelLarge)
+            }
+        },
+    )
+}

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.Menu
@@ -70,6 +71,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.radiocompanion.model.Station
 import com.radiocompanion.service.PlayerConnection
 import com.radiocompanion.service.StreamDiagnostics
+import com.radiocompanion.BuildConfig
+import com.radiocompanion.ui.components.AboutDialog
 import com.radiocompanion.ui.components.AddStationDialog
 import com.radiocompanion.ui.components.CountryDialog
 import com.radiocompanion.ui.components.DiagnosticsDialog
@@ -103,6 +106,7 @@ private sealed interface DrawerAction {
     data object Diagnostics : DrawerAction
     data object Import : DrawerAction
     data object Export : DrawerAction
+    data object About : DrawerAction
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -134,6 +138,7 @@ fun RadioScreen(
     var showCountry by rememberSaveable { mutableStateOf(false) }
     var showDiagnostics by rememberSaveable { mutableStateOf(false) }
     var showEqualizer by rememberSaveable { mutableStateOf(false) }
+    var showAbout by rememberSaveable { mutableStateOf(false) }
     var actionsFor by remember { mutableStateOf<Station?>(null) }
 
     val onDrawerAction: (DrawerAction) -> Unit = { action ->
@@ -150,6 +155,7 @@ fun RadioScreen(
             DrawerAction.Diagnostics -> showDiagnostics = true
             DrawerAction.Import -> onImport()
             DrawerAction.Export -> onExport()
+            DrawerAction.About -> showAbout = true
         }
     }
 
@@ -269,6 +275,9 @@ fun RadioScreen(
             onLevelMatch = fx::setLevelMatch,
             onReset = fx::reset,
         )
+    }
+    if (showAbout) {
+        AboutDialog(versionName = BuildConfig.VERSION_NAME, onDismiss = { showAbout = false })
     }
     actionsFor?.let { station ->
         StationActionsDialog(
@@ -430,6 +439,9 @@ private fun SideMenu(
             Item("Import station list", Icons.Rounded.Download, false) { onAction(DrawerAction.Import) }
             Item("Export station list", Icons.Rounded.Upload, false) { onAction(DrawerAction.Export) }
             Item("Stream diagnostics", Icons.Rounded.BugReport, false) { onAction(DrawerAction.Diagnostics) }
+
+            Section("App")
+            Item("About RDM Radio", Icons.Rounded.Info, false) { onAction(DrawerAction.About) }
         }
     }
 }
