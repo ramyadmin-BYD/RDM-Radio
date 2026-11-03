@@ -1,55 +1,97 @@
 name: Build APK
 
-# Builds the app on GitHub's servers (they have the Android SDK), runs the unit
-# tests, and makes the APK downloadable:
-#  - every push / pull request: Actions tab → run → "RDMRadio-debug-apk" artifact
-#  - pushing a tag like v1.0.0: also attached to a GitHub Release
+# Builds on GitHub's servers (they have the Android SDK), runs the unit tests and
+# produces two APKs:
+#  - RDMRadio-<version>.apk        small, optimized release build (install this one)
+#  - RDMRadio-debug.apk            large test build, Actions artifact only
+# Pushing a tag like v1.0.1 (or publishing a GitHub Release) attaches the release APK.
+#
+# Release signing uses these repository secrets (Settings → Secrets and variables → Actions):
+#   RELEASE_KEYSTORE_BASE64, RELEASE_KEYSTORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD
+# Without them the release APK is signed with a throwaway key: it installs, but
+# can't be installed as an update over a previous build.
 on:
   push:
-    branches: [main]
+    branches: ["**"]
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: write   # needed to create a Release on tag pushes
+  contents: write   # needed to attach the APK to a Release
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      VERSION_CODE: ${{ github.run_number }}
+      VERSION_NAME: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('dev-{0}', github.run_number) }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Set up release signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::warning::Release signing secrets are not set. The release APK will use a throwaway key and can't update an existing install."
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          {
+            echo "storeFile=$RUNNER_TEMP/release.jks"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > keystore.properties
+
       - name: Unit tests
         run: ./gradlew testDebugUnitTest --stacktrace
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace
+      - name: Build release and debug APKs
+        run: ./gradlew assembleRelease assembleDebug --stacktrace
 
-      - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk RDMRadio-debug.apk
+      - name: Collect APKs
+        run: |
+          VERSION="${VERSION_NAME#v}"
+          cp app/build/outputs/apk/release/app-release.apk "RDMRadio-$VERSION.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk RDMRadio-debug.apk
+          ls -lh RDMRadio-*.apk
+          echo "RELEASE_APK=RDMRadio-$VERSION.apk" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RDMRadio-release-apk
+          path: ${{ env.RELEASE_APK }}
 
       - uses: actions/upload-artifact@v4
         with:
           name: RDMRadio-debug-apk
           path: RDMRadio-debug.apk
 
-      - name: Upload test reports on failure
+      - name: Upload reports on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports
+          name: build-reports
           path: app/build/reports/
 
-      - name: Publish release (tags only)
+      - name: Attach to release (tags only)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: RDMRadio-debug.apk
+          files: ${{ env.RELEASE_APK }}
+
+      - name: Clean up signing files
+        if: always()
+        run: rm -f keystore.properties "$RUNNER_TEMP/release.jks"

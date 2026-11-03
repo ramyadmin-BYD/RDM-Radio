@@ -22,8 +22,10 @@ android {
         applicationId = "com.radiocompanion"   // change to a domain you own before release
         minSdk = 29          // Android 10: oldest base seen on DiLink head units
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        // CI passes these (run number / tag name); local builds use the defaults.
+        // versionCode must grow for Android to accept an update over an older install.
+        versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
+        versionName = System.getenv("VERSION_NAME")?.removePrefix("v") ?: "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

@@ -44,6 +44,13 @@ fill it in, then run `./gradlew assembleRelease`.
 
 Unit tests: `./gradlew testDebugUnitTest`
 
+## Download (GitHub)
+Every push builds on GitHub (Actions tab). Publishing a Release (tag `vX.Y.Z`) attaches
+`RDMRadio-X.Y.Z.apk`: the small, optimized release build. That's the one to install.
+Release signing uses four repository secrets (`RELEASE_KEYSTORE_BASE64`,
+`RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`); keep the same key
+forever so new versions install as updates.
+
 ## Install on the car
 Copy the APK to a USB drive and install it on the head unit, if your DiLink firmware
 allows app installs (this varies by market and firmware version). Firmware updates can
