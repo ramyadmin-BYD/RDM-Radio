@@ -7,17 +7,23 @@ import kotlin.math.roundToInt
 /**
  * Pure equalizer math (no Android types, so it is unit-tested on the JVM).
  *
- * The UI always shows 7 bands. Head units report their own native band count
- * (often 5: 60 / 230 / 910 / 3.6k / 14k Hz, sometimes 10). Each native band takes
- * the value of the 7-band curve at its centre frequency, interpolated on a
- * log-frequency axis, so any native layout follows the curve the user drew.
+ * The UI always shows 10 bands (ISO octave centres, 31 Hz – 16 kHz). Head units
+ * report their own native band count (often 5: 60 / 230 / 910 / 3.6k / 14k Hz,
+ * sometimes 10). Each native band takes the value of the 10-band curve at its
+ * centre frequency, interpolated on a log-frequency axis, so any native layout
+ * follows the curve the user drew.
  */
 object EqMath {
 
-    /** UI band centres (Hz): a typical automotive tuning layout. */
-    val BAND_FREQUENCIES_HZ = floatArrayOf(60f, 150f, 400f, 1_000f, 2_500f, 6_000f, 15_000f)
-    val BAND_LABELS = listOf("60", "150", "400", "1k", "2.5k", "6k", "15k")
-    const val BAND_COUNT = 7
+    /** UI band centres (Hz): standard 10-band octave layout. */
+    val BAND_FREQUENCIES_HZ = floatArrayOf(
+        31f, 62f, 125f, 250f, 500f, 1_000f, 2_000f, 4_000f, 8_000f, 16_000f,
+    )
+    val BAND_LABELS = listOf("31", "62", "125", "250", "500", "1k", "2k", "4k", "8k", "16k")
+    const val BAND_COUNT = 10
+
+    /** The 7-band layout used by version 1.0.x, for converting saved settings. */
+    val LEGACY_7_BAND_HZ = floatArrayOf(60f, 150f, 400f, 1_000f, 2_500f, 6_000f, 15_000f)
 
     const val UI_MIN_DB = -12f
     const val UI_MAX_DB = 12f
@@ -34,19 +40,28 @@ object EqMath {
      * How much each band contributes to perceived loudness (ear is most sensitive
      * around 1–4 kHz). Used to estimate how much louder/quieter the EQ curve sounds.
      */
-    private val PERCEPTUAL_WEIGHTS = floatArrayOf(0.6f, 0.8f, 1.0f, 1.2f, 1.2f, 1.0f, 0.6f)
+    private val PERCEPTUAL_WEIGHTS = floatArrayOf(0.4f, 0.6f, 0.8f, 0.9f, 1.0f, 1.2f, 1.2f, 1.1f, 0.9f, 0.6f)
 
     fun snap(db: Float): Float =
         ((db / STEP_DB).roundToInt() * STEP_DB).coerceIn(UI_MIN_DB, UI_MAX_DB)
 
-    /** Value of the 7-band curve at [freqHz]; flat beyond the outermost bands. */
+    /** Value of the 10-band curve at [freqHz]; flat beyond the outermost bands. */
     fun interpolate(gainsDb: List<Float>, freqHz: Float): Float {
         require(gainsDb.size == BAND_COUNT) { "Expected $BAND_COUNT gains" }
-        val f = BAND_FREQUENCIES_HZ
-        if (freqHz <= f.first()) return gainsDb.first()
-        if (freqHz >= f.last()) return gainsDb.last()
-        val i = (0 until BAND_COUNT - 1).first { freqHz < f[it + 1] }
-        val t = (ln(freqHz) - ln(f[i])) / (ln(f[i + 1]) - ln(f[i]))
+        return interpolateCurve(BAND_FREQUENCIES_HZ, gainsDb, freqHz)
+    }
+
+    /** Converts saved 7-band gains (v1.0.x) to the 10-band layout, keeping the curve's shape. */
+    fun fromLegacy7Band(gainsDb: List<Float>): List<Float> {
+        require(gainsDb.size == LEGACY_7_BAND_HZ.size)
+        return BAND_FREQUENCIES_HZ.map { snap(interpolateCurve(LEGACY_7_BAND_HZ, gainsDb, it)) }
+    }
+
+    private fun interpolateCurve(freqs: FloatArray, gainsDb: List<Float>, freqHz: Float): Float {
+        if (freqHz <= freqs.first()) return gainsDb.first()
+        if (freqHz >= freqs.last()) return gainsDb.last()
+        val i = (0 until freqs.size - 1).first { freqHz < freqs[it + 1] }
+        val t = (ln(freqHz) - ln(freqs[i])) / (ln(freqs[i + 1]) - ln(freqs[i]))
         return gainsDb[i] + (gainsDb[i + 1] - gainsDb[i]) * t
     }
 

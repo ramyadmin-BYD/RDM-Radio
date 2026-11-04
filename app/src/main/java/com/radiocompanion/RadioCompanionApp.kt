@@ -10,7 +10,9 @@ import com.radiocompanion.data.remote.PlaylistResolver
 import com.radiocompanion.data.remote.RadioBrowserApi
 import com.radiocompanion.data.repository.StationRepository
 import com.radiocompanion.data.settings.SettingsStore
+import com.radiocompanion.service.StreamDiagnostics
 import com.radiocompanion.service.audio.AudioEffectsController
+import com.radiocompanion.update.UpdateManager
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -50,6 +52,9 @@ class RadioCompanionApp : Application(), ImageLoaderFactory {
 
     val settings: SettingsStore by lazy { SettingsStore(this) }
 
+    /** In-app updates from GitHub Releases. */
+    val updates: UpdateManager by lazy { UpdateManager(this, http, json, settings) }
+
     /** Equalizer / Loudness / makeup gain, shared by the playback service and the UI. */
     val audioEffects: AudioEffectsController by lazy { AudioEffectsController(this, settings) }
 
@@ -62,6 +67,14 @@ class RadioCompanionApp : Application(), ImageLoaderFactory {
             json = json,
         )
     }
+
+    override fun onCreate() {
+        super.onCreate()
+        StreamDiagnostics.logContext = this
+    }
+
+    /** True once this app process has auto-started the last station (only once per launch). */
+    @Volatile var autoPlayHandled = false
 
     /** Small image cache: head units have little RAM and BYD kills memory-hungry apps. */
     override fun newImageLoader(): ImageLoader =

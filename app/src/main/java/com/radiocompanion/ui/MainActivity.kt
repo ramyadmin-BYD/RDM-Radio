@@ -5,30 +5,45 @@ import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
-import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.radiocompanion.R
 import com.radiocompanion.RadioCompanionApp
+import com.radiocompanion.data.settings.ThemeMode
+import com.radiocompanion.model.UiText
 import com.radiocompanion.service.PlayerConnection
 import com.radiocompanion.ui.theme.CarRadioTheme
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class MainActivity : ComponentActivity() {
+/**
+ * AppCompatActivity (not plain ComponentActivity) so the in-app language switch
+ * (English / Arabic) also works on Android 10–12, which DiLink is based on.
+ */
+class MainActivity : AppCompatActivity() {
 
     private val vm: RadioViewModel by viewModels { RadioViewModel.Factory }
     private lateinit var player: PlayerConnection
+    private val app get() = application as RadioCompanionApp
 
     private val exportLauncher =
         registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
@@ -48,12 +63,33 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         player = PlayerConnection(applicationContext)
 
+        val openedWithFile = intent?.action == Intent.ACTION_VIEW
         if (savedInstanceState == null) handleViewIntent(intent)
+        if (savedInstanceState == null) {
+            maybeAutoPlayLastStation(skip = openedWithFile)
+            app.updates.checkOnStartup()
+        }
         requestNotificationPermissionIfNeeded()
         maybeAskBatteryExemption()
 
         setContent {
-            CarRadioTheme {
+            val themeMode by vm.themeMode.collectAsStateWithLifecycle()
+            val dark = when (themeMode) {
+                ThemeMode.DARK -> true
+                ThemeMode.LIGHT -> false
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
+            // Status/navigation bar icons: light icons on the dark theme, dark icons on the light one.
+            DisposableEffect(dark) {
+                enableEdgeToEdge(
+                    statusBarStyle = if (dark) SystemBarStyle.dark(Color.TRANSPARENT)
+                    else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
+                    navigationBarStyle = if (dark) SystemBarStyle.dark(Color.TRANSPARENT)
+                    else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
+                )
+                onDispose {}
+            }
+            CarRadioTheme(darkTheme = dark) {
                 RadioScreen(
                     vm = vm,
                     player = player,
@@ -79,6 +115,19 @@ class MainActivity : ComponentActivity() {
         handleViewIntent(intent)
     }
 
+    /**
+     * Resume the last station when the app opens in the car. Only once per app
+     * process: not on rotation, language change or returning from another app.
+     */
+    private fun maybeAutoPlayLastStation(skip: Boolean) {
+        if (app.autoPlayHandled) return
+        app.autoPlayHandled = true
+        if (skip) return
+        lifecycleScope.launch {
+            if (app.settings.autoPlayLastStation.first()) player.requestAutoPlay()
+        }
+    }
+
     /** "Open with" a playlist, stream link or JSON backup. */
     private fun handleViewIntent(intent: Intent?) {
         if (intent?.action != Intent.ACTION_VIEW) return
@@ -100,7 +149,7 @@ class MainActivity : ComponentActivity() {
         try {
             importLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
         } catch (e: ActivityNotFoundException) {
-            vm.message("No file picker on this unit. Open the .json file from a file manager instead.")
+            vm.message(UiText(R.string.msg_no_file_picker))
         }
     }
 
@@ -117,7 +166,7 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("BatteryLife")
     private fun maybeAskBatteryExemption() {
         lifecycleScope.launch {
-            val settings = (application as RadioCompanionApp).settings
+            val settings = app.settings
             if (settings.batteryPromptShown()) return@launch
             settings.markBatteryPromptShown()
             val pm = getSystemService(PowerManager::class.java) ?: return@launch

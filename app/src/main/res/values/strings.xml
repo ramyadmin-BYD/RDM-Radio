@@ -1,3 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">RDM Radio</string>
+    <string name="app_name" translatable="false">RDM Radio</string>
+
+    <!-- Common actions -->
+    <string name="action_close">Close</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_add">Add</string>
+    <string name="action_clear">Clear</string>
+    <string name="list_separator" translatable="false">" · "</string>
+
+    <!-- Header -->
+    <string name="cd_open_menu">Open menu</string>
+    <string name="cd_equalizer">Equalizer</string>
+
+    <!-- Side menu -->
+    <string name="nav_section_stations">Stations</string>
+    <string name="nav_section_type">Station type</string>
+    <string name="nav_section_settings">Settings</string>
+    <string name="nav_section_tools">Tools</string>
+    <string name="nav_section_app">App</string>
+    <string name="nav_favorites">Favorites</string>
+    <string name="nav_all_stations">All stations</string>
+    <string name="type_all">All types</string>
+    <string name="type_official_fm">Official FM (online stream)</string>
+    <string name="type_online">Online radio</string>
+    <string name="nav_home_country">Home country: %1$s</string>
+    <string name="nav_refresh">Refresh station list</string>
+    <string name="nav_refreshing">Refreshing…</string>
+    <string name="nav_equalizer">Equalizer</string>
+    <string name="nav_equalizer_on">Equalizer (on)</string>
+    <string name="nav_theme">Theme: %1$s</string>
+    <string name="nav_language">Language: %1$s</string>
+    <string name="nav_auto_play">Auto-play last station</string>
+    <string name="nav_check_updates">Check for updates</string>
+    <string name="nav_add_station">Add a station</string>
+    <string name="nav_import">Import station list</string>
+    <string name="nav_export">Export station list</string>
+    <string name="nav_diagnostics">Stream diagnostics</string>
+    <string name="nav_about">About RDM Radio</string>
+
+    <!-- Theme and language -->
+    <string name="theme_title">Theme</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_system">Same as system</string>
+    <string name="language_title">Language</string>
+    <string name="language_system">Same as system</string>
+    <string name="language_english" translatable="false">English</string>
+    <string name="language_arabic" translatable="false">العربية</string>
+
+    <!-- What the list shows -->
+    <string name="view_favorites">Favorites</string>
+    <string name="view_all">All stations</string>
+    <string name="view_type_fm">Official FM</string>
+    <string name="view_type_online">Online radio</string>
+
+    <!-- Empty list -->
+    <string name="empty_no_match">No stations match this selection.</string>
+    <string name="empty_clear_filters">Clear filters</string>
+    <string name="empty_no_favorites">No favorites yet. Tap ♥ on any station.</string>
+    <string name="empty_browse">Browse stations</string>
+    <string name="empty_no_stations">No stations loaded yet.</string>
+    <string name="empty_load">Load stations</string>
+
+    <!-- Now playing and station tiles -->
+    <string name="np_pick_station">Pick a station</string>
+    <string name="np_reconnecting">Reconnecting…</string>
+    <string name="np_buffering">Buffering…</string>
+    <string name="np_unavailable">Unavailable: %1$s. Tap play to retry.</string>
+    <string name="np_stream_failed">stream failed</string>
+    <string name="cd_previous">Previous station</string>
+    <string name="cd_next">Next station</string>
+    <string name="cd_play">Play</string>
+    <string name="cd_pause">Pause</string>
+    <string name="cd_add_favorite">Add to favorites</string>
+    <string name="cd_remove_favorite">Remove from favorites</string>
+    <string name="badge_fm">FM</string>
+    <string name="badge_online">WEB</string>
+    <string name="bitrate_kbps">%1$d kbps</string>
+
+    <!-- Add station -->
+    <string name="add_title">Add a station</string>
+    <string name="add_hint">Icecast/Shoutcast, HLS (.m3u8), .pls or .m3u links all work.</string>
+    <string name="add_name">Name</string>
+    <string name="add_url">Stream URL</string>
+    <string name="add_backup_url">Backup URL (optional)</string>
+    <string name="add_country">Country: %1$s</string>
+    <string name="add_official">Official FM station</string>
+    <string name="add_official_hint">Online stream of an FM station. Off = online-only radio</string>
+
+    <!-- Country picker -->
+    <string name="country_title_home">Home country</string>
+    <string name="country_title_station">Station country</string>
+    <string name="country_item">%1$s (%2$s)</string>
+
+    <!-- Station actions (long-press) -->
+    <string name="actions_mark_online">Mark as online radio</string>
+    <string name="actions_mark_fm">Mark as Official FM</string>
+    <string name="actions_remove">Remove station</string>
+    <string name="actions_remove_confirm">Tap again to remove</string>
+
+    <!-- Diagnostics -->
+    <string name="diag_title">Stream diagnostics</string>
+    <string name="diag_empty">No stream problems recorded.</string>
+    <string name="diag_http_refused">Server refused the request (HTTP %1$d)</string>
+    <string name="diag_http_gone">Stream address no longer exists (HTTP %1$d)</string>
+    <string name="diag_http_server">Station server error (HTTP %1$d)</string>
+    <string name="diag_http_other">HTTP error %1$d</string>
+    <string name="diag_cleartext">Plain HTTP blocked by security settings</string>
+    <string name="diag_ssl">Secure connection (SSL) failed</string>
+    <string name="diag_dns">Server not found (DNS) or no internet</string>
+    <string name="diag_timeout">Connection timed out</string>
+    <string name="diag_gone">Stream address no longer exists</string>
+    <string name="diag_connect_failed">Couldn\'t connect to the station</string>
+    <string name="diag_not_audio">Address isn\'t an audio stream (maybe a web page)</string>
+    <string name="diag_format">Audio format not supported by this head unit</string>
+    <string name="diag_other">Playback error: %1$s</string>
+    <string name="svc_no_audio">No audio after %1$d s</string>
+    <string name="svc_backup_works">Backup address works; saved as main address</string>
+    <string name="svc_trying">Trying address %1$d of %2$d</string>
+    <string name="svc_all_failed">All addresses failed (%1$d). Stopped.</string>
+    <string name="svc_no_session">Couldn\'t create an audio session; equalizer disabled</string>
+    <string name="svc_root_title">Radio stations</string>
+
+    <!-- Equalizer -->
+    <string name="eq_title">Equalizer</string>
+    <string name="eq_power">Power</string>
+    <string name="eq_loudness">Loudness</string>
+    <string name="eq_custom">Custom</string>
+    <string name="preset_flat">Flat</string>
+    <string name="preset_car">Car cabin</string>
+    <string name="preset_bass">Bass</string>
+    <string name="preset_vocal">News / Talk</string>
+    <string name="preset_arabic">Arabic music</string>
+    <string name="preset_pop">Pop</string>
+    <string name="preset_rock">Rock</string>
+    <string name="preset_classical">Classical</string>
+    <string name="preset_treble">Treble</string>
+    <string name="eq_status_inactive">Start a station to activate the equalizer.</string>
+    <string name="eq_status_unavailable">This head unit doesn\'t allow app equalizers. Use the car\'s own sound settings.</string>
+    <string name="eq_status_mapped">Head unit has %1$d bands; your 10-band curve is mapped onto them.</string>
+    <string name="eq_status_soft_bass">Loudness uses EQ bass (no BassBoost on this unit).</string>
+    <string name="eq_status_comp">Volume compensation: %1$s</string>
+    <string name="eq_status_comp_bands">Volume compensation applied in the EQ bands.</string>
+    <string name="eq_level_match">Level match</string>
+    <string name="eq_level_match_hint">Raise until EQ on/off sound equally loud</string>
+    <string name="eq_reset">Reset</string>
+    <string name="eq_band_cd">%1$s hertz band</string>
+
+    <!-- Messages -->
+    <string name="msg_loaded">Stations loaded: %1$d</string>
+    <string name="msg_load_failed">Couldn\'t load stations. Check the car\'s internet connection.</string>
+    <string name="msg_removed">Removed %1$s</string>
+    <string name="msg_added">Added %1$s to favorites</string>
+    <string name="msg_add_failed">Couldn\'t add that station</string>
+    <string name="msg_type_fm">%1$s: Official FM</string>
+    <string name="msg_type_online">%1$s: Online radio</string>
+    <string name="msg_exported">Station list exported</string>
+    <string name="msg_export_failed">Export failed</string>
+    <string name="msg_saved_downloads">Saved Downloads/%1$s</string>
+    <string name="msg_read_failed">Couldn\'t read that file</string>
+    <string name="msg_no_stream_in_file">No stream address found in that file</string>
+    <string name="msg_imported">Stations imported: %1$d</string>
+    <string name="msg_invalid_list">That file isn\'t a valid station list</string>
+    <string name="msg_no_file_picker">No file picker on this unit. Open the .json file from a file manager instead.</string>
+    <string name="msg_up_to_date">RDM Radio is up to date (%1$s)</string>
+    <string name="msg_update_check_failed">Couldn\'t check for updates. Check the internet connection.</string>
+
+    <!-- Updater -->
+    <string name="update_title">Update available</string>
+    <string name="update_message">RDM Radio %1$s is available. You have %2$s.</string>
+    <string name="update_whats_new">What\'s new</string>
+    <string name="update_now">Update now</string>
+    <string name="update_later">Later</string>
+    <string name="update_downloading">Downloading… %1$d%%</string>
+    <string name="update_installing">Opening the installer…</string>
+    <string name="update_permission">To install updates, allow RDM Radio to install apps, then tap Update now again.</string>
+    <string name="update_open_settings">Open settings</string>
+    <string name="update_failed">Update failed: %1$s</string>
+    <string name="update_err_download">download failed</string>
+    <string name="update_err_verify">the file isn\'t a valid RDM Radio update</string>
+    <string name="update_err_install">the installer refused the update</string>
+    <string name="update_err_blocked">this head unit blocks app installs</string>
+
+    <!-- About -->
+    <string name="about_version">Version %1$s</string>
+    <string name="about_intro">Internet radio for the BYD Song L and other DiLink 5.0 head units.</string>
+    <string name="about_feature_stations">Egyptian, regional and international stations, with Nogoum FM 100.6 built in</string>
+    <string name="about_feature_favorites">Favorites, your own stream links, and station list import/export</string>
+    <string name="about_feature_autoplay">Resumes your last station automatically when the car starts</string>
+    <string name="about_feature_reliability">Automatic reconnect and backup stream addresses, with stream diagnostics</string>
+    <string name="about_feature_eq">10-band equalizer with presets, Loudness and volume compensation</string>
+    <string name="about_feature_ui">Dark and light themes, English and Arabic, and automatic updates</string>
+    <string name="about_feature_car">Designed for the BYD DiLink 5.0 screen: landscape, portrait and split-screen</string>
+    <string name="about_designed_by">Designed by</string>
+    <string name="about_designer">Eng. Ramy Abdelaziz</string>
+    <string name="about_credits">Station directory: radio-browser.info (community-run). Stream availability depends on each station.</string>
 </resources>

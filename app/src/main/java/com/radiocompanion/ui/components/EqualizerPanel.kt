@@ -31,6 +31,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -44,10 +45,14 @@ import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.radiocompanion.R
 import com.radiocompanion.service.audio.EqMath
 import com.radiocompanion.service.audio.EqPreset
 import com.radiocompanion.service.audio.EqPresets
@@ -57,9 +62,32 @@ import java.util.Locale
 private fun formatDb(db: Float): String =
     if (db == 0f) "0 dB" else String.format(Locale.US, "%+.1f dB", db)
 
+/** Compact value above each band slider (10 sliders must fit across the screen). */
+private fun formatDbShort(db: Float): String = when {
+    db == 0f -> "0"
+    db % 1f == 0f -> String.format(Locale.US, "%+d", db.toInt())
+    else -> String.format(Locale.US, "%+.1f", db)
+}
+
+@Composable
+private fun presetLabel(id: String): String = stringResource(
+    when (id) {
+        "flat" -> R.string.preset_flat
+        "car" -> R.string.preset_car
+        "bass" -> R.string.preset_bass
+        "vocal" -> R.string.preset_vocal
+        "arabic" -> R.string.preset_arabic
+        "pop" -> R.string.preset_pop
+        "rock" -> R.string.preset_rock
+        "classical" -> R.string.preset_classical
+        "treble" -> R.string.preset_treble
+        else -> R.string.eq_custom
+    }
+)
+
 /**
- * Full-width equalizer for the widescreen DiLink display. Also fits portrait and
- * split-screen: the header scrolls sideways and the 7 sliders share the width.
+ * Full-width 10-band equalizer for the widescreen DiLink display. Also fits portrait
+ * and split-screen: the header scrolls sideways and the 10 sliders share the width.
  */
 @Composable
 fun EqualizerDialog(
@@ -84,18 +112,21 @@ fun EqualizerDialog(
                 PresetRow(state.presetId, onPreset)
                 Spacer(Modifier.heightIn(min = 12.dp))
                 EqStatusLine(state)
-                Row(
-                    Modifier.weight(1f).fillMaxWidth().padding(vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                ) {
-                    EqMath.BAND_LABELS.forEachIndexed { i, label ->
-                        EqBandSlider(
-                            valueDb = state.gainsDb[i],
-                            label = label,
-                            active = state.enabled,
-                            onValueChange = { onBandChange(i, it) },
-                            modifier = Modifier.weight(1f).fillMaxHeight(),
-                        )
+                // Low → high frequencies run left to right in every language (not mirrored in Arabic).
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                    Row(
+                        Modifier.weight(1f).fillMaxWidth().padding(vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                    ) {
+                        EqMath.BAND_LABELS.forEachIndexed { i, label ->
+                            EqBandSlider(
+                                valueDb = state.gainsDb[i],
+                                label = label,
+                                active = state.enabled,
+                                onValueChange = { onBandChange(i, it) },
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                            )
+                        }
                     }
                 }
                 LevelMatchRow(state, onLevelMatch, onReset)
@@ -117,12 +148,12 @@ private fun EqHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(28.dp),
         ) {
-            Text("Equalizer", style = MaterialTheme.typography.headlineSmall)
-            LabeledSwitch("Power", state.enabled, onEnabled)
-            LabeledSwitch("Loudness", state.loudness, onLoudness)
+            Text(stringResource(R.string.eq_title), style = MaterialTheme.typography.headlineSmall)
+            LabeledSwitch(stringResource(R.string.eq_power), state.enabled, onEnabled)
+            LabeledSwitch(stringResource(R.string.eq_loudness), state.loudness, onLoudness)
         }
         IconButton(onClick = onDismiss, modifier = Modifier.size(76.dp)) {
-            Icon(Icons.Rounded.Close, "Close", Modifier.size(36.dp))
+            Icon(Icons.Rounded.Close, stringResource(R.string.action_close), Modifier.size(36.dp))
         }
     }
 }
@@ -152,7 +183,7 @@ private fun PresetRow(selectedId: String, onPreset: (EqPreset) -> Unit) {
             FilterChip(
                 selected = preset.id == selectedId,
                 onClick = { onPreset(preset) },
-                label = { Text(preset.label, style = MaterialTheme.typography.labelLarge) },
+                label = { Text(presetLabel(preset.id), style = MaterialTheme.typography.labelLarge) },
                 modifier = Modifier.heightIn(min = 56.dp),
             )
         }
@@ -160,7 +191,7 @@ private fun PresetRow(selectedId: String, onPreset: (EqPreset) -> Unit) {
             FilterChip(
                 selected = true,
                 onClick = {},
-                label = { Text("Custom", style = MaterialTheme.typography.labelLarge) },
+                label = { Text(stringResource(R.string.eq_custom), style = MaterialTheme.typography.labelLarge) },
                 modifier = Modifier.heightIn(min = 56.dp),
             )
         }
@@ -170,19 +201,17 @@ private fun PresetRow(selectedId: String, onPreset: (EqPreset) -> Unit) {
 /** Tells the user what the head unit actually supports. */
 @Composable
 private fun EqStatusLine(state: EqState) {
+    val mapped = stringResource(R.string.eq_status_mapped, state.nativeBandCount)
+    val softBass = stringResource(R.string.eq_status_soft_bass)
+    val comp = stringResource(R.string.eq_status_comp, formatDb(state.appliedMakeupDb))
+    val compBands = stringResource(R.string.eq_status_comp_bands)
     val (text, isWarning) = when {
-        !state.attached -> "Start a station to activate the equalizer." to false
-        !state.equalizerAvailable ->
-            "This head unit doesn't allow app equalizers. Use the car's own sound settings." to true
+        !state.attached -> stringResource(R.string.eq_status_inactive) to false
+        !state.equalizerAvailable -> stringResource(R.string.eq_status_unavailable) to true
         else -> buildString {
-            if (state.nativeBandCount != EqMath.BAND_COUNT) {
-                append("Head unit has ${state.nativeBandCount} bands; your 7-band curve is mapped onto them. ")
-            }
-            if (state.loudness && !state.hardwareBassBoost) append("Loudness uses EQ bass (no BassBoost on this unit). ")
-            if (state.enabled) {
-                if (state.makeupGainAvailable) append("Volume compensation: ${formatDb(state.appliedMakeupDb)}")
-                else append("Volume compensation applied in the EQ bands.")
-            }
+            if (state.nativeBandCount != EqMath.BAND_COUNT) append(mapped).append(' ')
+            if (state.loudness && !state.hardwareBassBoost) append(softBass).append(' ')
+            if (state.enabled) append(if (state.makeupGainAvailable) comp else compBands)
         }.trim() to false
     }
     if (text.isNotEmpty()) {
@@ -199,9 +228,9 @@ private fun EqStatusLine(state: EqState) {
 private fun LevelMatchRow(state: EqState, onLevelMatch: (Float) -> Unit, onReset: () -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.widthIn(min = 160.dp)) {
-            Text("Level match", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.eq_level_match), style = MaterialTheme.typography.titleLarge)
             Text(
-                "Raise until EQ on/off sound equally loud",
+                stringResource(R.string.eq_level_match_hint),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -220,7 +249,7 @@ private fun LevelMatchRow(state: EqState, onLevelMatch: (Float) -> Unit, onReset
             modifier = Modifier.widthIn(min = 110.dp).padding(start = 12.dp),
         )
         TextButton(onClick = onReset, modifier = Modifier.heightIn(min = 64.dp)) {
-            Text("Reset", style = MaterialTheme.typography.titleLarge)
+            Text(stringResource(R.string.eq_reset), style = MaterialTheme.typography.titleLarge)
         }
     }
 }
@@ -245,9 +274,10 @@ fun EqBandSlider(
     val min = EqMath.UI_MIN_DB
     val max = EqMath.UI_MAX_DB
 
-    Column(modifier.widthIn(min = 64.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    val bandDescription = stringResource(R.string.eq_band_cd, label)
+    Column(modifier.widthIn(min = 52.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-            formatDb(valueDb),
+            formatDbShort(valueDb),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
             color = accent,
@@ -259,7 +289,7 @@ fun EqBandSlider(
                 .weight(1f)
                 .fillMaxWidth()
                 .semantics {
-                    contentDescription = "$label hertz band"
+                    contentDescription = bandDescription
                     stateDescription = formatDb(valueDb)
                     progressBarRangeInfo = ProgressBarRangeInfo(valueDb, min..max)
                     setProgress { v -> latestOnChange(EqMath.snap(v)); true }

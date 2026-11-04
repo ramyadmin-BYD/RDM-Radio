@@ -12,7 +12,10 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.radiocompanion.RadioCompanionApp
 import com.radiocompanion.data.remote.PlaylistResolver
 import com.radiocompanion.data.repository.NewStation
+import com.radiocompanion.R
+import com.radiocompanion.data.settings.ThemeMode
 import com.radiocompanion.model.Station
+import com.radiocompanion.model.UiText
 import com.radiocompanion.model.StationRegion
 import com.radiocompanion.model.StationType
 import com.radiocompanion.model.region
@@ -43,8 +46,9 @@ enum class RegionFilter { ALL, LOCAL, REGIONAL, INTERNATIONAL }
 /** Category 2 filter. ALL = no filter. */
 enum class TypeFilter { ALL, OFFICIAL_FM, ONLINE }
 
-fun countryDisplayName(code: String): String =
-    runCatching { Locale.Builder().setRegion(code).build().displayCountry }
+/** Country name in the given language (the UI passes the screen's locale, so it follows Arabic/English). */
+fun countryDisplayName(code: String, inLocale: Locale = Locale.getDefault()): String =
+    runCatching { Locale.Builder().setRegion(code).build().getDisplayCountry(inLocale) }
         .getOrNull()?.ifBlank { null } ?: code
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -65,8 +69,25 @@ class RadioViewModel(private val app: RadioCompanionApp) : ViewModel() {
     private val _refreshing = MutableStateFlow(false)
     val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
 
-    private val _messages = Channel<String>(Channel.BUFFERED)
-    val messages: Flow<String> = _messages.receiveAsFlow()
+    private val _messages = Channel<UiText>(Channel.BUFFERED)
+    val messages: Flow<UiText> = _messages.receiveAsFlow()
+
+    val themeMode: StateFlow<ThemeMode> =
+        settings.themeMode.stateIn(viewModelScope, SharingStarted.Eagerly, ThemeMode.DARK)
+
+    val autoPlayLastStation: StateFlow<Boolean> =
+        settings.autoPlayLastStation.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    /** In-app updates (the UI shows the prompt and forwards button taps). */
+    val updates = app.updates
+
+    fun setThemeMode(mode: ThemeMode) {
+        viewModelScope.launch { settings.setThemeMode(mode) }
+    }
+
+    fun setAutoPlayLastStation(on: Boolean) {
+        viewModelScope.launch { settings.setAutoPlayLastStation(on) }
+    }
 
     private val _region = MutableStateFlow(RegionFilter.ALL)
     val region: StateFlow<RegionFilter> = _region.asStateFlow()
@@ -148,7 +169,7 @@ class RadioViewModel(private val app: RadioCompanionApp) : ViewModel() {
     fun setOfficialFm(station: Station, official: Boolean) {
         viewModelScope.launch {
             repo.setOfficialFm(station.id, official)
-            message(if (official) "${station.name}: FM broadcaster" else "${station.name}: Web-only radio")
+            message(UiText(if (official) R.string.msg_type_fm else R.string.msg_type_online, station.name))
         }
     }
 
@@ -171,11 +192,11 @@ class RadioViewModel(private val app: RadioCompanionApp) : ViewModel() {
         try {
             val count = repo.refreshFromRadioBrowser(code)
             settings.markRefreshed()
-            if (!quiet) message("Loaded $count stations")
+            if (!quiet) message(UiText(R.string.msg_loaded, count))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            message("Couldn't load stations. Check the car's internet connection.")
+            message(UiText(R.string.msg_load_failed))
         } finally {
             _refreshing.value = false
         }
@@ -188,7 +209,7 @@ class RadioViewModel(private val app: RadioCompanionApp) : ViewModel() {
     fun delete(station: Station) {
         viewModelScope.launch {
             repo.delete(station.id)
-            message("Removed ${station.name}")
+            message(UiText(R.string.msg_removed, station.name))
         }
     }
 
@@ -196,11 +217,11 @@ class RadioViewModel(private val app: RadioCompanionApp) : ViewModel() {
         viewModelScope.launch {
             try {
                 val s = repo.addCustom(input)
-                message("Added ${s.name} to favorites")
+                message(UiText(R.string.msg_added, s.name))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                message("Couldn't add that station")
+                message(UiText(R.string.msg_add_failed))
             }
         }
     }
@@ -216,7 +237,7 @@ class RadioViewModel(private val app: RadioCompanionApp) : ViewModel() {
                         ?: error("Can't open file")
                 }
             }.isSuccess
-            message(if (ok) "Station list exported" else "Export failed")
+            message(UiText(if (ok) R.string.msg_exported else R.string.msg_export_failed))
         }
     }
 
@@ -238,13 +259,13 @@ class RadioViewModel(private val app: RadioCompanionApp) : ViewModel() {
                         ?: error("Can't open file")
                 }
             }.isSuccess
-            message(if (ok) "Saved Downloads/$name" else "Export failed")
+            message(if (ok) UiText(R.string.msg_saved_downloads, name) else UiText(R.string.msg_export_failed))
         }
     }
 
     fun importFrom(uri: Uri) {
         viewModelScope.launch {
-            val text = readText(uri) ?: return@launch message("Couldn't read that file")
+            val text = readText(uri) ?: return@launch message(UiText(R.string.msg_read_failed))
             importText(text)
         }
     }
@@ -255,21 +276,21 @@ class RadioViewModel(private val app: RadioCompanionApp) : ViewModel() {
             when (uri.scheme?.lowercase()) {
                 "http", "https" -> addCustom(quickStation(nameFrom(uri), uri.toString()))
                 else -> {
-                    val text = readText(uri) ?: return@launch message("Couldn't read that file")
+                    val text = readText(uri) ?: return@launch message(UiText(R.string.msg_read_failed))
                     val trimmed = text.trimStart()
                     if (mimeType == "application/json" || trimmed.startsWith("{") || trimmed.startsWith("[")) {
                         importText(text)
                     } else {
                         val stream = PlaylistResolver.parse(text)
                         if (stream != null) addCustom(quickStation(nameFrom(uri), stream))
-                        else message("No stream address found in that file")
+                        else message(UiText(R.string.msg_no_stream_in_file))
                     }
                 }
             }
         }
     }
 
-    fun message(text: String) {
+    fun message(text: UiText) {
         _messages.trySend(text)
     }
 
@@ -277,11 +298,11 @@ class RadioViewModel(private val app: RadioCompanionApp) : ViewModel() {
         try {
             val count = repo.importJson(text)
             showFavorites()
-            message("Imported $count stations")
+            message(UiText(R.string.msg_imported, count))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            message("That file isn't a valid station list")
+            message(UiText(R.string.msg_invalid_list))
         }
     }
 

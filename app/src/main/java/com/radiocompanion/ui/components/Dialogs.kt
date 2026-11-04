@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -19,6 +20,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,13 +31,16 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.dp
+import com.radiocompanion.R
 import com.radiocompanion.data.repository.NewStation
 import com.radiocompanion.model.Station
 import com.radiocompanion.service.StreamLogEntry
-import com.radiocompanion.ui.countryDisplayName
+import com.radiocompanion.ui.rememberCountryName
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -48,6 +53,13 @@ private val COUNTRIES = listOf(
 
 private fun isHttpUrl(text: String) =
     text.trim().let { it.startsWith("http://", true) || it.startsWith("https://", true) }
+
+@Composable
+private fun DialogButton(text: String, enabled: Boolean = true, onClick: () -> Unit) {
+    TextButton(onClick = onClick, enabled = enabled, modifier = Modifier.heightIn(min = 56.dp)) {
+        Text(text, style = MaterialTheme.typography.labelLarge)
+    }
+}
 
 @Composable
 fun AddStationDialog(
@@ -63,34 +75,35 @@ fun AddStationDialog(
     var pickCountry by rememberSaveable { mutableStateOf(false) }
 
     val valid = isHttpUrl(url) && (backupUrl.isBlank() || isHttpUrl(backupUrl))
+    // URLs are always left-to-right, also when the screen is in Arabic.
+    val ltr = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Ltr)
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add a station", style = MaterialTheme.typography.headlineSmall) },
+        title = { Text(stringResource(R.string.add_title), style = MaterialTheme.typography.headlineSmall) },
         text = {
             // Scrolls when the screen is in landscape and the keyboard is up.
             Column(
                 Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(
-                    "Icecast/Shoutcast, HLS (.m3u8), .pls or .m3u links all work.",
-                    style = MaterialTheme.typography.bodyLarge,
-                )
+                Text(stringResource(R.string.add_hint), style = MaterialTheme.typography.bodyLarge)
                 OutlinedTextField(
                     value = name, onValueChange = { name = it },
-                    label = { Text("Name") }, singleLine = true,
+                    label = { Text(stringResource(R.string.add_name)) }, singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = url, onValueChange = { url = it },
-                    label = { Text("Stream URL") }, singleLine = true,
+                    label = { Text(stringResource(R.string.add_url)) }, singleLine = true,
+                    textStyle = ltr,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
                     value = backupUrl, onValueChange = { backupUrl = it },
-                    label = { Text("Backup URL (optional)") }, singleLine = true,
+                    label = { Text(stringResource(R.string.add_backup_url)) }, singleLine = true,
+                    textStyle = ltr,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -98,16 +111,16 @@ fun AddStationDialog(
                     onClick = { pickCountry = true },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                 ) {
-                    Text("Country: ${countryDisplayName(country)}", style = MaterialTheme.typography.labelLarge)
+                    Text(stringResource(R.string.add_country, rememberCountryName(country)), style = MaterialTheme.typography.labelLarge)
                 }
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = 64.dp).clickable { official = !official },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text("FM broadcaster", style = MaterialTheme.typography.titleLarge)
+                        Text(stringResource(R.string.add_official), style = MaterialTheme.typography.titleLarge)
                         Text(
-                            "Online stream of an FM station. Off = web-only radio",
+                            stringResource(R.string.add_official_hint),
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -117,33 +130,25 @@ fun AddStationDialog(
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = {
-                    onAdd(
-                        NewStation(
-                            name = name,
-                            streamUrl = url,
-                            backupUrl = backupUrl,
-                            countryCode = country,
-                            isOfficialFm = official,
-                        )
+            DialogButton(stringResource(R.string.action_add), enabled = valid) {
+                onAdd(
+                    NewStation(
+                        name = name,
+                        streamUrl = url,
+                        backupUrl = backupUrl,
+                        countryCode = country,
+                        isOfficialFm = official,
                     )
-                    onDismiss()
-                },
-                enabled = valid,
-                modifier = Modifier.heightIn(min = 56.dp),
-            ) { Text("Add", style = MaterialTheme.typography.labelLarge) }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 56.dp)) {
-                Text("Cancel", style = MaterialTheme.typography.labelLarge)
+                )
+                onDismiss()
             }
         },
+        dismissButton = { DialogButton(stringResource(R.string.action_cancel), onClick = onDismiss) },
     )
 
     if (pickCountry) {
         CountryDialog(
-            title = "Station country",
+            title = stringResource(R.string.country_title_station),
             current = country,
             onDismiss = { pickCountry = false },
             onPick = { country = it },
@@ -156,7 +161,7 @@ fun CountryDialog(
     current: String,
     onDismiss: () -> Unit,
     onPick: (String) -> Unit,
-    title: String = "Home country",
+    title: String = stringResource(R.string.country_title_home),
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -166,7 +171,7 @@ fun CountryDialog(
                 items(COUNTRIES) { code ->
                     val selected = code == current
                     Text(
-                        "${countryDisplayName(code)} ($code)",
+                        stringResource(R.string.country_item, rememberCountryName(code), code),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                         color = if (selected) MaterialTheme.colorScheme.primary
@@ -180,11 +185,41 @@ fun CountryDialog(
                 }
             }
         },
-        confirmButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 56.dp)) {
-                Text("Close", style = MaterialTheme.typography.labelLarge)
+        confirmButton = { DialogButton(stringResource(R.string.action_close), onClick = onDismiss) },
+    )
+}
+
+/** Single-choice list (theme, language). Picking an option applies it and closes the dialog. */
+@Composable
+fun <T> ChoiceDialog(
+    title: String,
+    options: List<Pair<T, String>>,
+    selected: T,
+    onPick: (T) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title, style = MaterialTheme.typography.headlineSmall) },
+        text = {
+            Column {
+                options.forEach { (value, label) ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 64.dp)
+                            .clickable { onDismiss(); onPick(value) }
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        RadioButton(selected = value == selected, onClick = null)
+                        Spacer(Modifier.width(16.dp))
+                        Text(label, style = MaterialTheme.typography.titleLarge)
+                    }
+                }
             }
         },
+        confirmButton = { DialogButton(stringResource(R.string.action_close), onClick = onDismiss) },
     )
 }
 
@@ -203,22 +238,18 @@ fun StationActionsDialog(
         text = {
             Column {
                 ActionRow(
-                    if (station.isOfficialFm) "Mark as web-only radio" else "Mark as FM broadcaster",
+                    stringResource(if (station.isOfficialFm) R.string.actions_mark_online else R.string.actions_mark_fm),
                 ) { onSetOfficialFm(!station.isOfficialFm); onDismiss() }
                 HorizontalDivider()
                 ActionRow(
-                    if (confirmDelete) "Tap again to remove" else "Remove station",
+                    stringResource(if (confirmDelete) R.string.actions_remove_confirm else R.string.actions_remove),
                     isDestructive = true,
                 ) {
                     if (confirmDelete) { onDelete(); onDismiss() } else confirmDelete = true
                 }
             }
         },
-        confirmButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 56.dp)) {
-                Text("Close", style = MaterialTheme.typography.labelLarge)
-            }
-        },
+        confirmButton = { DialogButton(stringResource(R.string.action_close), onClick = onDismiss) },
     )
 }
 
@@ -246,10 +277,10 @@ fun DiagnosticsDialog(
     val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.US)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Stream diagnostics", style = MaterialTheme.typography.headlineSmall) },
+        title = { Text(stringResource(R.string.diag_title), style = MaterialTheme.typography.headlineSmall) },
         text = {
             if (entries.isEmpty()) {
-                Text("No stream problems recorded.", style = MaterialTheme.typography.bodyLarge)
+                Text(stringResource(R.string.diag_empty), style = MaterialTheme.typography.bodyLarge)
             } else {
                 SelectionContainer {
                     LazyColumn(Modifier.heightIn(max = 520.dp)) {
@@ -261,17 +292,17 @@ fun DiagnosticsDialog(
                                     fontWeight = FontWeight.Bold,
                                 )
                                 Text(
-                                    e.message,
+                                    e.message.resolve(),
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = if (e.isError) MaterialTheme.colorScheme.error
                                             else MaterialTheme.colorScheme.secondary,
                                 )
                                 e.url?.let {
-                                    Spacer(Modifier.heightIn(min = 2.dp))
                                     Text(
                                         it,
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        style = MaterialTheme.typography.bodyMedium.copy(textDirection = TextDirection.Ltr),
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = 2.dp),
                                     )
                                 }
                             }
@@ -281,16 +312,8 @@ fun DiagnosticsDialog(
                 }
             }
         },
-        confirmButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 56.dp)) {
-                Text("Close", style = MaterialTheme.typography.labelLarge)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onClear, enabled = entries.isNotEmpty(), modifier = Modifier.heightIn(min = 56.dp)) {
-                Text("Clear", style = MaterialTheme.typography.labelLarge)
-            }
-        },
+        confirmButton = { DialogButton(stringResource(R.string.action_close), onClick = onDismiss) },
+        dismissButton = { DialogButton(stringResource(R.string.action_clear), enabled = entries.isNotEmpty(), onClick = onClear) },
     )
 }
 
@@ -298,20 +321,21 @@ fun DiagnosticsDialog(
 @Composable
 fun AboutDialog(versionName: String, onDismiss: () -> Unit) {
     val features = listOf(
-        "Egyptian, regional (Arab world) and international stations, with Nogoum FM 100.6 built in",
-        "Favorites, your own stream links, and station list import/export",
-        "Automatic reconnect and backup stream addresses, with stream diagnostics",
-        "7-band equalizer with presets, Loudness and volume compensation",
-        "Background playback, steering-wheel controls, and pause for calls and navigation",
-        "Designed for the BYD DiLink 5.0 screen: landscape, portrait and split-screen",
+        R.string.about_feature_stations,
+        R.string.about_feature_favorites,
+        R.string.about_feature_autoplay,
+        R.string.about_feature_reliability,
+        R.string.about_feature_eq,
+        R.string.about_feature_ui,
+        R.string.about_feature_car,
     )
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Column {
-                Text("RDM Radio", style = MaterialTheme.typography.displaySmall)
+                Text(stringResource(R.string.app_name), style = MaterialTheme.typography.displaySmall)
                 Text(
-                    "Version $versionName",
+                    stringResource(R.string.about_version, versionName),
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -322,34 +346,31 @@ fun AboutDialog(versionName: String, onDismiss: () -> Unit) {
                 Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(
-                    "Internet radio for the BYD Song L and other DiLink 5.0 head units.",
-                    style = MaterialTheme.typography.bodyLarge,
-                )
+                Text(stringResource(R.string.about_intro), style = MaterialTheme.typography.bodyLarge)
                 features.forEach { feature ->
                     Row {
                         Text("•  ", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary)
-                        Text(feature, style = MaterialTheme.typography.bodyLarge)
+                        Text(stringResource(feature), style = MaterialTheme.typography.bodyLarge)
                     }
                 }
                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
-                Text("Designed by", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
-                    "Eng. Ramy Abdelaziz",
+                    stringResource(R.string.about_designed_by),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    stringResource(R.string.about_designer),
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.primary,
                 )
                 Text(
-                    "Station directory: radio-browser.info (community-run). Stream availability depends on each station.",
+                    stringResource(R.string.about_credits),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         },
-        confirmButton = {
-            TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 56.dp)) {
-                Text("Close", style = MaterialTheme.typography.labelLarge)
-            }
-        },
+        confirmButton = { DialogButton(stringResource(R.string.action_close), onClick = onDismiss) },
     )
 }

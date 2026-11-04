@@ -30,7 +30,9 @@ import androidx.media3.session.SessionError
 import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.radiocompanion.R
 import com.radiocompanion.RadioCompanionApp
+import com.radiocompanion.model.UiText
 import com.radiocompanion.model.streamCandidates
 import com.radiocompanion.ui.MainActivity
 import kotlinx.coroutines.CoroutineScope
@@ -78,7 +80,7 @@ class RadioPlaybackService : MediaLibraryService() {
 
     private val bufferingWatchdog = Runnable {
         if (player.playbackState == Player.STATE_BUFFERING && player.playWhenReady && !readyOnThisUrl && isOnline()) {
-            StreamDiagnostics.error(stationName(), currentUrl(), "No audio after ${STARTUP_TIMEOUT_MS / 1000}s")
+            StreamDiagnostics.error(stationName(), currentUrl(), UiText(R.string.svc_no_audio, (STARTUP_TIMEOUT_MS / 1000).toInt()))
             moveToNextCandidate()
         }
     }
@@ -124,7 +126,7 @@ class RadioPlaybackService : MediaLibraryService() {
             player.setAudioSessionId(audioSessionId)
             app.audioEffects.attach(audioSessionId)
         } else {
-            StreamDiagnostics.error("Equalizer", null, "Couldn't create an audio session; equalizer disabled")
+            StreamDiagnostics.error(getString(R.string.eq_title), null, UiText(R.string.svc_no_session))
         }
 
         // Load (but don't play) the last station so the play button works right away.
@@ -172,7 +174,6 @@ class RadioPlaybackService : MediaLibraryService() {
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             mediaItem ?: return
-            lastStation.save(mediaItem)
             val url = mediaItem.localConfiguration?.uri?.toString()
             val isOurBackupSwap = url != null && url == internalSwitchUrl
             internalSwitchUrl = null
@@ -246,12 +247,15 @@ class RadioPlaybackService : MediaLibraryService() {
 
     private fun onUrlWorks() {
         readyOnThisUrl = true
+        // Remember the last station that actually played (with the address that worked),
+        // so the app can resume it automatically on the next start.
+        player.currentMediaItem?.let(lastStation::save)
         retriesOnThisUrl = 0
         backoffStep = 0
         fullCycles = 0
         val url = currentUrl()
         if (candidateIndex > 0 && url != null) {
-            StreamDiagnostics.info(stationName(), url, "Backup address works; saved as main address")
+            StreamDiagnostics.info(stationName(), url, UiText(R.string.svc_backup_works))
             val id = stationId ?: return
             scope.launch { runCatching { app.repository.promoteWorkingUrl(id, url) } }
         }
@@ -275,7 +279,7 @@ class RadioPlaybackService : MediaLibraryService() {
             switchToCandidate(0, delayMs = nextBackoffMs())
             return
         }
-        StreamDiagnostics.error(stationName(), currentUrl(), "All ${candidates.size} address(es) failed. Stopped.")
+        StreamDiagnostics.error(stationName(), currentUrl(), UiText(R.string.svc_all_failed, candidates.size))
         cancelPending()
         player.pause()
     }
@@ -288,7 +292,7 @@ class RadioPlaybackService : MediaLibraryService() {
             candidateIndex = index
             retriesOnThisUrl = 0
             readyOnThisUrl = false
-            if (index > 0) StreamDiagnostics.info(stationName(), url, "Trying address ${index + 1} of ${candidates.size}")
+            if (index > 0) StreamDiagnostics.info(stationName(), url, UiText(R.string.svc_trying, index + 1, candidates.size))
             val replacement = item.buildUpon()
                 .setUri(url)
                 .setMimeType(if (isHlsUrl(url)) MimeTypes.APPLICATION_M3U8 else null)
@@ -431,7 +435,7 @@ class RadioPlaybackService : MediaLibraryService() {
             .setMediaId(ROOT_ID)
             .setMediaMetadata(
                 MediaMetadata.Builder()
-                    .setTitle("Radio stations")
+                    .setTitle(getString(R.string.svc_root_title))
                     .setIsBrowsable(true)
                     .setIsPlayable(false)
                     .setMediaType(MediaMetadata.MEDIA_TYPE_FOLDER_RADIO_STATIONS)

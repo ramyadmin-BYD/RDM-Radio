@@ -27,6 +27,12 @@ android {
         versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
         versionName = System.getenv("VERSION_NAME")?.removePrefix("v") ?: "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // GitHub repository the in-app updater checks (owner/name).
+        buildConfigField("String", "UPDATE_REPO", "\"ramyadmin-BYD/RDM-Radio\"")
+
+        // Ship only English + Arabic resources (libraries bring dozens of languages).
+        resourceConfigurations += listOf("en", "ar")
     }
 
     signingConfigs {
@@ -81,6 +87,7 @@ ksp {
 dependencies {
     // AndroidX core + lifecycle
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)   // in-app language switch (English / Arabic) on Android 10–12
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)

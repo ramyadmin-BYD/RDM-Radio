@@ -40,12 +40,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.radiocompanion.R
 import com.radiocompanion.model.Station
 import com.radiocompanion.service.NowPlaying
 import com.radiocompanion.ui.theme.CarDimens
@@ -109,9 +111,10 @@ fun StationTile(
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TypeBadge(station)
+                    val kbps = if (station.bitrate > 0) stringResource(R.string.bitrate_kbps, station.bitrate) else null
                     val subtitle = buildList {
                         addAll(station.tags.split(',').map { it.trim() }.filter { it.isNotEmpty() }.take(2))
-                        if (station.bitrate > 0) add("${station.bitrate} kbps")
+                        if (kbps != null) add(kbps)
                     }.joinToString(" · ")
                     if (subtitle.isNotEmpty()) {
                         Spacer(Modifier.width(8.dp))
@@ -127,7 +130,7 @@ fun StationTile(
             IconButton(onClick = onFavorite, modifier = Modifier.size(CarDimens.MinTouch)) {
                 Icon(
                     if (station.isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                    contentDescription = if (station.isFavorite) "Remove from favorites" else "Add to favorites",
+                    contentDescription = stringResource(if (station.isFavorite) R.string.cd_remove_favorite else R.string.cd_add_favorite),
                     tint = if (station.isFavorite) colors.primary else colors.onSurfaceVariant,
                     modifier = Modifier.size(34.dp),
                 )
@@ -147,7 +150,7 @@ fun TypeBadge(station: Station) {
         contentColor = if (official) colors.onPrimary else colors.onSurfaceVariant,
     ) {
         Text(
-            if (official) "FM" else "WEB",
+            stringResource(if (official) R.string.badge_fm else R.string.badge_online),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
@@ -181,10 +184,14 @@ fun StationLogo(url: String?, size: Dp) {
     }
 }
 
+@Composable
 private fun statusLine(now: NowPlaying): String? = when {
-    now.hasError && now.wantsToPlay -> "Reconnecting…"
-    now.hasError -> "Unavailable: ${now.errorDetail ?: "stream failed"}. Tap play to retry."
-    now.isBuffering -> "Buffering…"
+    now.hasError && now.wantsToPlay -> stringResource(R.string.np_reconnecting)
+    now.hasError -> stringResource(
+        R.string.np_unavailable,
+        now.errorDetail?.resolve() ?: stringResource(R.string.np_stream_failed),
+    )
+    now.isBuffering -> stringResource(R.string.np_buffering)
     else -> now.streamTitle
 }
 
@@ -205,7 +212,7 @@ fun NowPlayingPanel(
             StationLogo(now.artworkUri?.toString(), size = 150.dp)
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    now.stationName.ifBlank { "Pick a station" },
+                    now.stationName.ifBlank { stringResource(R.string.np_pick_station) },
                     style = MaterialTheme.typography.displaySmall,
                     textAlign = TextAlign.Center,
                     maxLines = 2, overflow = TextOverflow.Ellipsis,
@@ -243,7 +250,7 @@ fun MiniPlayerBar(
             Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    now.stationName.ifBlank { "Pick a station" },
+                    now.stationName.ifBlank { stringResource(R.string.np_pick_station) },
                     style = MaterialTheme.typography.titleLarge,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
@@ -276,7 +283,7 @@ fun TransportControls(
         horizontalArrangement = Arrangement.spacedBy(if (large) 28.dp else 4.dp),
     ) {
         IconButton(onClick = onPrevious, modifier = Modifier.size(side)) {
-            Icon(Icons.Rounded.SkipPrevious, "Previous station", Modifier.size(side * 0.55f))
+            Icon(Icons.Rounded.SkipPrevious, stringResource(R.string.cd_previous), Modifier.size(side * 0.55f))
         }
         FilledIconButton(onClick = onPlayPause, modifier = Modifier.size(main), shape = CircleShape) {
             if (now.isBuffering) {
@@ -288,13 +295,13 @@ fun TransportControls(
             } else {
                 Icon(
                     if (now.wantsToPlay) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    contentDescription = if (now.wantsToPlay) "Pause" else "Play",
+                    contentDescription = stringResource(if (now.wantsToPlay) R.string.cd_pause else R.string.cd_play),
                     modifier = Modifier.size(main * 0.55f),
                 )
             }
         }
         IconButton(onClick = onNext, modifier = Modifier.size(side)) {
-            Icon(Icons.Rounded.SkipNext, "Next station", Modifier.size(side * 0.55f))
+            Icon(Icons.Rounded.SkipNext, stringResource(R.string.cd_next), Modifier.size(side * 0.55f))
         }
     }
 }

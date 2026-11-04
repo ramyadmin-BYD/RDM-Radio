@@ -10,6 +10,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
 import com.radiocompanion.model.Station
+import com.radiocompanion.model.UiText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,7 +25,7 @@ data class NowPlaying(
     val wantsToPlay: Boolean = false,  // playWhenReady: true while buffering/reconnecting too
     val isBuffering: Boolean = false,
     val hasError: Boolean = false,
-    val errorDetail: String? = null,   // plain-language reason, from StreamDiagnostics
+    val errorDetail: UiText? = null,   // plain-language reason, from StreamDiagnostics
 )
 
 /** Connects the UI to [RadioPlaybackService] through a MediaController and exposes a StateFlow. */
@@ -35,6 +36,7 @@ class PlayerConnection(private val context: Context) {
 
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var controller: MediaController? = null
+    private var autoPlayPending = false
 
     private val listener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) = publish(player)
@@ -51,6 +53,10 @@ class PlayerConnection(private val context: Context) {
             controller = c
             c.addListener(listener)
             publish(c)
+            if (autoPlayPending) {
+                autoPlayPending = false
+                resumeLastStation(c)
+            }
         }, ContextCompat.getMainExecutor(context))
     }
 
@@ -59,6 +65,22 @@ class PlayerConnection(private val context: Context) {
         controller = null
         controllerFuture?.let(MediaController::releaseFuture)
         controllerFuture = null
+    }
+
+    /**
+     * Starts the last played station as soon as the player is connected. The service
+     * already loaded it (from LastStationStore) when it was created; this presses play.
+     * Does nothing if something is already playing or no station was ever played.
+     */
+    fun requestAutoPlay() {
+        val c = controller
+        if (c != null) resumeLastStation(c) else autoPlayPending = true
+    }
+
+    private fun resumeLastStation(c: MediaController) {
+        if (c.mediaItemCount == 0 || c.playWhenReady) return
+        if (c.playbackState == Player.STATE_IDLE) c.prepare()
+        c.play()
     }
 
     /** Loads the whole visible list so steering-wheel next/previous moves through it. */

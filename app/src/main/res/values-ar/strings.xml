@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Common actions -->
+    <string name="action_close">إغلاق</string>
+    <string name="action_cancel">إلغاء</string>
+    <string name="action_add">إضافة</string>
+    <string name="action_clear">مسح</string>
+
+    <!-- Header -->
+    <string name="cd_open_menu">فتح القائمة</string>
+    <string name="cd_equalizer">المعادل الصوتي</string>
+
+    <!-- Side menu -->
+    <string name="nav_section_stations">المحطات</string>
+    <string name="nav_section_type">نوع المحطة</string>
+    <string name="nav_section_settings">الإعدادات</string>
+    <string name="nav_section_tools">أدوات</string>
+    <string name="nav_section_app">التطبيق</string>
+    <string name="nav_favorites">المفضلة</string>
+    <string name="nav_all_stations">كل المحطات</string>
+    <string name="type_all">كل الأنواع</string>
+    <string name="type_official_fm">إذاعات FM الرسمية (بث مباشر)</string>
+    <string name="type_online">راديو الإنترنت</string>
+    <string name="nav_home_country">البلد: %1$s</string>
+    <string name="nav_refresh">تحديث قائمة المحطات</string>
+    <string name="nav_refreshing">جارٍ التحديث…</string>
+    <string name="nav_equalizer">المعادل الصوتي</string>
+    <string name="nav_equalizer_on">المعادل الصوتي (يعمل)</string>
+    <string name="nav_theme">المظهر: %1$s</string>
+    <string name="nav_language">اللغة: %1$s</string>
+    <string name="nav_auto_play">تشغيل آخر محطة تلقائيًا</string>
+    <string name="nav_check_updates">البحث عن تحديثات</string>
+    <string name="nav_add_station">إضافة محطة</string>
+    <string name="nav_import">استيراد قائمة المحطات</string>
+    <string name="nav_export">تصدير قائمة المحطات</string>
+    <string name="nav_diagnostics">تشخيص البث</string>
+    <string name="nav_about">عن RDM Radio</string>
+
+    <!-- Theme and language -->
+    <string name="theme_title">المظهر</string>
+    <string name="theme_dark">داكن</string>
+    <string name="theme_light">فاتح</string>
+    <string name="theme_system">حسب النظام</string>
+    <string name="language_title">اللغة</string>
+    <string name="language_system">حسب النظام</string>
+
+    <!-- What the list shows -->
+    <string name="view_favorites">المفضلة</string>
+    <string name="view_all">كل المحطات</string>
+    <string name="view_type_fm">إذاعات FM الرسمية</string>
+    <string name="view_type_online">راديو الإنترنت</string>
+
+    <!-- Empty list -->
+    <string name="empty_no_match">لا توجد محطات تطابق هذا الاختيار.</string>
+    <string name="empty_clear_filters">إزالة التصفية</string>
+    <string name="empty_no_favorites">لا توجد محطات مفضلة بعد. اضغط ♥ على أي محطة.</string>
+    <string name="empty_browse">تصفح المحطات</string>
+    <string name="empty_no_stations">لم يتم تحميل أي محطات بعد.</string>
+    <string name="empty_load">تحميل المحطات</string>
+
+    <!-- Now playing and station tiles -->
+    <string name="np_pick_station">اختر محطة</string>
+    <string name="np_reconnecting">جارٍ إعادة الاتصال…</string>
+    <string name="np_buffering">جارٍ التحميل…</string>
+    <string name="np_unavailable">غير متاحة: %1$s. اضغط تشغيل للمحاولة مرة أخرى.</string>
+    <string name="np_stream_failed">تعذّر تشغيل البث</string>
+    <string name="cd_previous">المحطة السابقة</string>
+    <string name="cd_next">المحطة التالية</string>
+    <string name="cd_play">تشغيل</string>
+    <string name="cd_pause">إيقاف مؤقت</string>
+    <string name="cd_add_favorite">إضافة إلى المفضلة</string>
+    <string name="cd_remove_favorite">إزالة من المفضلة</string>
+    <string name="badge_fm">FM</string>
+    <string name="badge_online">ويب</string>
+    <string name="bitrate_kbps">%1$d كيلوبت/ث</string>
+
+    <!-- Add station -->
+    <string name="add_title">إضافة محطة</string>
+    <string name="add_hint">تعمل روابط Icecast/Shoutcast وHLS (.m3u8) و.pls و.m3u.</string>
+    <string name="add_name">الاسم</string>
+    <string name="add_url">رابط البث</string>
+    <string name="add_backup_url">رابط احتياطي (اختياري)</string>
+    <string name="add_country">البلد: %1$s</string>
+    <string name="add_official">محطة FM رسمية</string>
+    <string name="add_official_hint">بث مباشر لمحطة FM. إيقاف = راديو إنترنت فقط</string>
+
+    <!-- Country picker -->
+    <string name="country_title_home">البلد الأساسي</string>
+    <string name="country_title_station">بلد المحطة</string>
+    <string name="country_item">%1$s (%2$s)</string>
+
+    <!-- Station actions (long-press) -->
+    <string name="actions_mark_online">تحديد كراديو إنترنت</string>
+    <string name="actions_mark_fm">تحديد كمحطة FM رسمية</string>
+    <string name="actions_remove">حذف المحطة</string>
+    <string name="actions_remove_confirm">اضغط مرة أخرى للحذف</string>
+
+    <!-- Diagnostics -->
+    <string name="diag_title">تشخيص البث</string>
+    <string name="diag_empty">لم يتم تسجيل أي مشكلات في البث.</string>
+    <string name="diag_http_refused">رفض الخادم الطلب (HTTP %1$d)</string>
+    <string name="diag_http_gone">رابط البث لم يعد موجودًا (HTTP %1$d)</string>
+    <string name="diag_http_server">خطأ في خادم المحطة (HTTP %1$d)</string>
+    <string name="diag_http_other">خطأ HTTP %1$d</string>
+    <string name="diag_cleartext">تم حظر HTTP غير المشفّر بسبب إعدادات الأمان</string>
+    <string name="diag_ssl">فشل الاتصال الآمن (SSL)</string>
+    <string name="diag_dns">لم يتم العثور على الخادم (DNS) أو لا يوجد إنترنت</string>
+    <string name="diag_timeout">انتهت مهلة الاتصال</string>
+    <string name="diag_gone">رابط البث لم يعد موجودًا</string>
+    <string name="diag_connect_failed">تعذّر الاتصال بالمحطة</string>
+    <string name="diag_not_audio">الرابط ليس بثًا صوتيًا (ربما صفحة ويب)</string>
+    <string name="diag_format">صيغة الصوت غير مدعومة على هذه الشاشة</string>
+    <string name="diag_other">خطأ في التشغيل: %1$s</string>
+    <string name="svc_no_audio">لا يوجد صوت بعد %1$d ثانية</string>
+    <string name="svc_backup_works">الرابط الاحتياطي يعمل؛ تم حفظه كرابط أساسي</string>
+    <string name="svc_trying">تجربة الرابط %1$d من %2$d</string>
+    <string name="svc_all_failed">فشلت كل الروابط (%1$d). تم الإيقاف.</string>
+    <string name="svc_no_session">تعذّر إنشاء جلسة صوت؛ تم تعطيل المعادل الصوتي</string>
+    <string name="svc_root_title">محطات الراديو</string>
+
+    <!-- Equalizer -->
+    <string name="eq_title">المعادل الصوتي</string>
+    <string name="eq_power">تشغيل</string>
+    <string name="eq_loudness">تقوية الصوت</string>
+    <string name="eq_custom">مخصص</string>
+    <string name="preset_flat">مستوٍ</string>
+    <string name="preset_car">داخل السيارة</string>
+    <string name="preset_bass">باس</string>
+    <string name="preset_vocal">أخبار / حوار</string>
+    <string name="preset_arabic">موسيقى عربية</string>
+    <string name="preset_pop">بوب</string>
+    <string name="preset_rock">روك</string>
+    <string name="preset_classical">كلاسيك</string>
+    <string name="preset_treble">حدّة</string>
+    <string name="eq_status_inactive">شغّل محطة لتفعيل المعادل الصوتي.</string>
+    <string name="eq_status_unavailable">هذه الشاشة لا تسمح بمعادل صوتي للتطبيقات. استخدم إعدادات الصوت في السيارة.</string>
+    <string name="eq_status_mapped">الشاشة تدعم %1$d نطاقات؛ تم تحويل منحنى العشرة نطاقات إليها.</string>
+    <string name="eq_status_soft_bass">تقوية الصوت تستخدم الباس في المعادل (لا يوجد BassBoost في هذه الشاشة).</string>
+    <string name="eq_status_comp">تعويض مستوى الصوت: %1$s</string>
+    <string name="eq_status_comp_bands">تم تطبيق تعويض مستوى الصوت في نطاقات المعادل.</string>
+    <string name="eq_level_match">موازنة المستوى</string>
+    <string name="eq_level_match_hint">ارفعها حتى يتساوى الصوت مع المعادل وبدونه</string>
+    <string name="eq_reset">إعادة ضبط</string>
+    <string name="eq_band_cd">نطاق %1$s هرتز</string>
+
+    <!-- Messages -->
+    <string name="msg_loaded">تم تحميل المحطات: %1$d</string>
+    <string name="msg_load_failed">تعذّر تحميل المحطات. تحقق من اتصال السيارة بالإنترنت.</string>
+    <string name="msg_removed">تم حذف %1$s</string>
+    <string name="msg_added">تمت إضافة %1$s إلى المفضلة</string>
+    <string name="msg_add_failed">تعذّرت إضافة هذه المحطة</string>
+    <string name="msg_type_fm">%1$s: محطة FM رسمية</string>
+    <string name="msg_type_online">%1$s: راديو إنترنت</string>
+    <string name="msg_exported">تم تصدير قائمة المحطات</string>
+    <string name="msg_export_failed">فشل التصدير</string>
+    <string name="msg_saved_downloads">تم الحفظ في Downloads/%1$s</string>
+    <string name="msg_read_failed">تعذّرت قراءة هذا الملف</string>
+    <string name="msg_no_stream_in_file">لم يتم العثور على رابط بث في هذا الملف</string>
+    <string name="msg_imported">تم استيراد المحطات: %1$d</string>
+    <string name="msg_invalid_list">هذا الملف ليس قائمة محطات صالحة</string>
+    <string name="msg_no_file_picker">لا يوجد منتقي ملفات على هذه الشاشة. افتح ملف ‎.json‎ من مدير الملفات بدلًا من ذلك.</string>
+    <string name="msg_up_to_date">RDM Radio محدَّث (%1$s)</string>
+    <string name="msg_update_check_failed">تعذّر البحث عن تحديثات. تحقق من الاتصال بالإنترنت.</string>
+
+    <!-- Updater -->
+    <string name="update_title">يتوفر تحديث</string>
+    <string name="update_message">يتوفر الإصدار %1$s من RDM Radio. الإصدار الحالي %2$s.</string>
+    <string name="update_whats_new">الجديد</string>
+    <string name="update_now">تحديث الآن</string>
+    <string name="update_later">لاحقًا</string>
+    <string name="update_downloading">جارٍ التنزيل… %1$d%%</string>
+    <string name="update_installing">جارٍ فتح أداة التثبيت…</string>
+    <string name="update_permission">لتثبيت التحديثات، اسمح لتطبيق RDM Radio بتثبيت التطبيقات، ثم اضغط «تحديث الآن» مرة أخرى.</string>
+    <string name="update_open_settings">فتح الإعدادات</string>
+    <string name="update_failed">فشل التحديث: %1$s</string>
+    <string name="update_err_download">فشل التنزيل</string>
+    <string name="update_err_verify">الملف ليس تحديثًا صالحًا لـ RDM Radio</string>
+    <string name="update_err_install">رفضت أداة التثبيت التحديث</string>
+    <string name="update_err_blocked">هذه الشاشة تمنع تثبيت التطبيقات</string>
+
+    <!-- About -->
+    <string name="about_version">الإصدار %1$s</string>
+    <string name="about_intro">راديو الإنترنت لسيارة BYD Song L وشاشات DiLink 5.0 الأخرى.</string>
+    <string name="about_feature_stations">محطات مصرية وعربية ودولية، مع نجوم إف إم 100.6 مدمجة</string>
+    <string name="about_feature_favorites">المفضلة وروابط البث الخاصة بك واستيراد وتصدير قائمة المحطات</string>
+    <string name="about_feature_autoplay">يستأنف آخر محطة تلقائيًا عند تشغيل السيارة</string>
+    <string name="about_feature_reliability">إعادة اتصال تلقائية وروابط بث احتياطية مع تشخيص البث</string>
+    <string name="about_feature_eq">معادل صوتي من 10 نطاقات مع إعدادات جاهزة وتقوية الصوت وتعويض المستوى</string>
+    <string name="about_feature_ui">مظهر داكن وفاتح، والعربية والإنجليزية، وتحديثات تلقائية</string>
+    <string name="about_feature_car">مصمم لشاشة BYD DiLink 5.0: أفقي ورأسي وتقسيم الشاشة</string>
+    <string name="about_designed_by">تصميم</string>
+    <string name="about_designer">م. رامي عبد العزيز</string>
+    <string name="about_credits">دليل المحطات: radio-browser.info (مجتمعي). توفر البث يعتمد على كل محطة.</string>
+</resources>

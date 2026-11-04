@@ -28,6 +28,8 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Lets the app ask to be excluded from battery/RAM cleanup (sideloaded app, not Play) -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- In-app updates from GitHub Releases (Android asks the user to allow it once) -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
 
     <!--
@@ -49,6 +51,7 @@
         android:fullBackupContent="@xml/backup_rules"
         android:usesCleartextTraffic="true"
         android:networkSecurityConfig="@xml/network_security_config"
+        android:localeConfig="@xml/locales_config"
         tools:targetApi="35">
 
         <!--
@@ -117,6 +120,21 @@
                 <!-- Legacy MediaBrowser clients (older system media widgets) -->
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
+        </service>
+
+        <!-- Result of installing an update (PackageInstaller callback) -->
+        <receiver
+            android:name=".update.UpdateInstallReceiver"
+            android:exported="false" />
+
+        <!-- Remembers the in-app language on Android 10–12 (AppCompat backport) -->
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+            <meta-data
+                android:name="autoStoreLocales"
+                android:value="true" />
         </service>
 
         <!-- Media button "play" after the process was killed → Media3 restarts the

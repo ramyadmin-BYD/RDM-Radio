@@ -6,13 +6,14 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.roundToInt
 
 class EqMathTest {
 
-    private val flat = List(7) { 0f }
+    private val flat = List(10) { 0f }
     // A typical 5-band head-unit equalizer (AOSP default centres) and range ±15 dB.
     private val fiveBand = listOf(60f, 230f, 910f, 3_600f, 14_000f)
-    private val tenBand = listOf(31f, 62f, 125f, 250f, 500f, 1_000f, 2_000f, 4_000f, 8_000f, 16_000f)
+    private val tenBand = EqMath.BAND_FREQUENCIES_HZ.toList()
     private val range = -1500..1500
 
     private fun plan(
@@ -21,14 +22,29 @@ class EqMathTest {
         hwBass: Boolean = true, enhancer: Boolean = true,
     ) = EqMath.plan(enabled, gains, levelMatch, loudness, volume, centers, range, hwBass, enhancer)
 
+    @Test fun hasTenBands() {
+        assertEquals(10, EqMath.BAND_COUNT)
+        assertEquals(10, EqMath.BAND_FREQUENCIES_HZ.size)
+        assertEquals(10, EqMath.BAND_LABELS.size)
+    }
+
     @Test fun interpolatesOnLogFrequency() {
-        val g = listOf(0f, 6f, 0f, 0f, 0f, 0f, 0f)
-        assertEquals(6f, EqMath.interpolate(g, 150f), 0.001f)
-        assertEquals(0f, EqMath.interpolate(g, 400f), 0.001f)
-        val mid = EqMath.interpolate(g, 245f)   // ~geometric middle of 150 and 400 Hz
+        val g = listOf(0f, 6f, 0f, 0f, 0f, 0f, 0f, 0f, 0f, 0f)   // +6 dB at 62 Hz
+        assertEquals(6f, EqMath.interpolate(g, 62f), 0.001f)
+        assertEquals(0f, EqMath.interpolate(g, 125f), 0.001f)
+        val mid = EqMath.interpolate(g, 88f)   // ~geometric middle of 62 and 125 Hz
         assertTrue(mid in 2.8f..3.2f)
         assertEquals(0f, EqMath.interpolate(g, 20f), 0.001f)       // below range: flat extension
         assertEquals(0f, EqMath.interpolate(g, 20_000f), 0.001f)
+    }
+
+    @Test fun convertsSavedSevenBandSettings() {
+        val old = listOf(6f, 0f, 0f, 0f, 0f, 0f, 0f)   // v1.0.x: +6 dB at 60 Hz
+        val converted = EqMath.fromLegacy7Band(old)
+        assertEquals(10, converted.size)
+        assertEquals(6f, converted[0], 0.001f)        // 31 Hz: below 60 → same as 60 Hz
+        assertTrue(converted[1] in 5f..6f)            // 62 Hz: almost the old 60 Hz value
+        assertEquals(0f, converted[5], 0.001f)        // 1 kHz untouched
     }
 
     @Test fun flatCurveWithEqOnGetsOnlyLevelMatch() {
@@ -46,21 +62,19 @@ class EqMathTest {
     }
 
     @Test fun cutsAreCompensatedWithMakeupGain() {
-        val cuts = List(7) { -4f }
-        val p = plan(gains = cuts)
+        val p = plan(gains = List(10) { -4f })
         assertEquals(700, p.makeupGainMb)                // 3 dB level match + 4 dB lost to cuts
         assertTrue(p.nativeLevelsMb.all { it == -400 })
     }
 
     @Test fun boostsAreShiftedDownInsteadOfGettingLouder() {
-        val boosts = List(7) { 5f }
-        val p = plan(gains = boosts)
-        assertTrue(p.nativeLevelsMb.all { it == 0 })     // +5 everywhere sounds like flat, louder → shifted to 0
+        val p = plan(gains = List(10) { 5f })
+        assertTrue(p.nativeLevelsMb.all { it == 0 })
         assertEquals(300, p.makeupGainMb)
     }
 
     @Test fun makeupIsCapped() {
-        val p = plan(gains = List(7) { -12f }, levelMatch = 9f)
+        val p = plan(gains = List(10) { -12f }, levelMatch = 9f)
         assertEquals((EqMath.MAX_MAKEUP_DB * 100).toInt(), p.makeupGainMb)
     }
 
@@ -70,14 +84,15 @@ class EqMathTest {
         assertTrue(p.nativeLevelsMb.all { it == 300 })
     }
 
-    @Test fun mapsOntoTenBandHardware() {
-        val p = plan(gains = EqPresets.byId("bass")!!.gainsDb, centers = tenBand)
-        assertEquals(10, p.nativeLevelsMb.size)
-        assertTrue(p.nativeLevelsMb[0] > p.nativeLevelsMb[6])   // bass > 2 kHz
+    @Test fun tenBandHardwareGetsTheCurveExactly() {
+        val bass = EqPresets.byId("bass")!!.gainsDb
+        val p = plan(gains = bass, centers = tenBand, levelMatch = 0f)
+        val shift = EqMath.perceivedDeltaDb(bass).coerceAtLeast(0f)
+        assertEquals(bass.map { ((it - shift) * 100).roundToInt() }, p.nativeLevelsMb)
     }
 
     @Test fun levelsAreClampedToHardwareRange() {
-        val p = EqMath.plan(true, List(7) { -12f }, 0f, false, null, fiveBand, -600..600, true, true)
+        val p = EqMath.plan(true, List(10) { -12f }, 0f, false, null, fiveBand, -600..600, true, true)
         assertTrue(p.nativeLevelsMb.all { it == -600 })
     }
 
@@ -101,7 +116,7 @@ class EqMathTest {
         assertEquals(0, p.nativeLevelsMb[2])            // 910 Hz: untouched
     }
 
-    @Test fun presetsHaveSevenBands() {
-        assertTrue(EqPresets.ALL.all { it.gainsDb.size == 7 })
+    @Test fun presetsHaveTenBands() {
+        assertTrue(EqPresets.ALL.all { it.gainsDb.size == 10 })
     }
 }
