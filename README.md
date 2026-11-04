@@ -5,24 +5,47 @@ Kotlin + Jetpack Compose + Media3/ExoPlayer.
 
 ## Features
 - Internet streaming only (no tuner/antenna needed).
-- **Clean header:** menu button + two quick buttons: **Favorites** and **home country** (Egypt).
-- **Side menu (☰):** all categories and tools
+- **Clean header:** menu, **Favorites**, **home country** (Egypt), and the equalizer button.
+- **Side menu (☰):**
   - Stations: Favorites, All stations
-  - Region: Egypt (home), Regional (Arab world), International
-  - Station type: FM broadcasters (their online streams) / Web-only radio
-  - Settings: home country, refresh station list, equalizer
+  - Station type: Official FM (online stream) / Online radio
+  - Settings: home country, refresh, equalizer, theme, language, auto-play
   - Tools: add station, import/export, stream diagnostics
+  - App: check for updates, About
+- **Auto-play:** the last station that played successfully is saved and starts automatically
+  when the app opens (switch in the side menu; on by default).
+- **Themes:** high-contrast dark (default), light, or follow the system.
+- **Languages:** English and Arabic (right-to-left), switchable inside the app.
+- **In-app updates:** checks GitHub Releases on start (every 12 h) and installs new versions.
 - Built-in **Nogoum FM 100.6** (Egypt): `https://audio.nrpstream.com/listen/nogoumfm/radio.mp3`
-  (in `app/src/main/assets/stations.json`; merged into existing installs on launch)
-- Station directory from [radio-browser.info](https://www.radio-browser.info): Egypt,
-  Arabic-language and worldwide top stations, refreshed weekly.
-- Favorites, custom stations (country, type, backup URL), JSON import/export, "Open with"
-- Stream fixes: browser User-Agent, http↔https redirects, cleartext allowed, automatic fallback
-  to backup addresses, 20 s startup timeout; ☰ → Stream diagnostics shows why a station failed
-- 7-band equalizer with presets, Loudness switch and automatic volume compensation
-- Background playback, reconnect after signal loss, resume after the system kills the app
-- Audio focus: pauses for phone calls, ducks under navigation prompts
-- Layout adapts to landscape, portrait (rotating screen) and split-screen
+- Station directory from [radio-browser.info](https://www.radio-browser.info), refreshed weekly.
+- Stream fixes: browser User-Agent, http↔https redirects, automatic fallback to backup
+  addresses, 20 s startup timeout, ☰ → Stream diagnostics.
+- **10-band equalizer** (31 Hz – 16 kHz) with presets, Loudness and volume compensation.
+- Background playback, reconnect after signal loss, audio focus for calls and navigation.
+- Layout adapts to landscape, portrait (rotating screen) and split-screen.
+
+## Languages
+- English: `app/src/main/res/values/strings.xml` (default).
+- Arabic: `app/src/main/res/values-ar/strings.xml`.
+- Every visible text is a string resource. Messages made in the background (ViewModel,
+  playback service) are `UiText` objects resolved on screen, so they follow the in-app language.
+- The equalizer bands stay low → high from left to right in Arabic too.
+
+## In-app updates (OTA)
+`update/UpdateManager.kt` calls `GET https://api.github.com/repos/ramyadmin-BYD/RDM-Radio/releases/latest`
+(repository set by `UPDATE_REPO` in `app/build.gradle.kts`). If the release tag is a higher
+version than the installed app and the release has an APK (not `-debug`), the app shows
+**Update available**. It downloads the APK, checks it is RDM Radio at that version, and
+installs it with Android's PackageInstaller. Android accepts it only if it is signed with
+the same key as the installed app. The first time, Android asks to allow RDM Radio to
+install apps. Debug builds never update. The repository must be public.
+
+### Publishing a new version
+1. Push the changes to `main`.
+2. Create a release on GitHub with a tag one step higher, e.g. `v1.1.1`, and publish it.
+3. The build attaches `RDMRadio-1.1.1.apk` (about 8 minutes).
+4. Cars with RDM Radio installed are offered the update the next time the app opens.
 
 ## App name and icon
 - Name: `app/src/main/res/values/strings.xml` → `app_name` ("RDM Radio").
@@ -64,8 +87,9 @@ The car needs internet (SIM or hotspot) for streaming and for loading the statio
 
 ## Equalizer
 Open it with the equalizer icon in the top bar (or ⋮ → Equalizer).
-- **7 bands** (60, 150, 400, 1k, 2.5k, 6k, 15k Hz). Head units report their own band count
-  (often 5 or 10); the 7-band curve is mapped onto them by log-frequency interpolation.
+- **10 bands** (31, 62, 125, 250, 500 Hz, 1k, 2k, 4k, 8k, 16k). Head units report their own
+  band count (often 5 or 10); the curve is mapped onto them by log-frequency interpolation.
+  Saved 7-band settings from version 1.0 are converted automatically.
 - **Volume compensation:** boosts are offset by lowering all bands (same loudness, less
   clipping); cuts and the head unit's own EQ headroom drop are made up with a
   `LoudnessEnhancer` (it has a limiter). **Level match** (default +3 dB) is the per-car
