@@ -193,7 +193,6 @@
     <string name="about_feature_eq">10-band equalizer with presets, Loudness and volume compensation</string>
     <string name="about_feature_ui">Dark and light themes, English and Arabic, and automatic updates</string>
     <string name="about_feature_car">Designed for the BYD DiLink 5.0 screen: landscape, portrait and split-screen</string>
-    <string name="about_designed_by">Designed by</string>
-    <string name="about_designer">Eng. Ramy Abdelaziz</string>
+    <string name="about_heading">Designed by Eng. Ramy Abdelaziz</string>
     <string name="about_credits">Station directory: radio-browser.info (community-run). Stream availability depends on each station.</string>
 </resources>

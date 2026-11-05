@@ -27,6 +27,10 @@ interface StationDao {
     @Query("SELECT * FROM stations WHERE id = :id")
     suspend fun getById(id: String): Station?
 
+    /** Live row for one station (null if it isn't in the database). */
+    @Query("SELECT * FROM stations WHERE id = :id")
+    fun observeById(id: String): Flow<Station?>
+
     @Query("SELECT * FROM stations WHERE source = :source")
     suspend fun getBySource(source: String): List<Station>
 

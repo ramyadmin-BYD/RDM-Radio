@@ -32,6 +32,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -204,6 +206,27 @@ class RadioViewModel(private val app: RadioCompanionApp) : ViewModel() {
 
     fun toggleFavorite(station: Station) {
         viewModelScope.launch { repo.setFavorite(station.id, !station.isFavorite) }
+    }
+
+    /** Station shown on the Now Playing panel; the screen sets it from the player state. */
+    private val _nowPlayingId = MutableStateFlow<String?>(null)
+
+    /** Favorite state of the playing station, straight from Room. Null = nothing to bookmark. */
+    val nowPlayingFavorite: StateFlow<Boolean?> = _nowPlayingId
+        .flatMapLatest { id -> if (id == null) flowOf(null) else repo.observeById(id).map { it?.isFavorite } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun setNowPlayingStation(id: String?) {
+        _nowPlayingId.value = id
+    }
+
+    /** Heart on the Now Playing panel. Reads the saved flag so it can't flip a stale value. */
+    fun toggleNowPlayingFavorite() {
+        val id = _nowPlayingId.value ?: return
+        viewModelScope.launch {
+            val station = repo.getById(id) ?: return@launch
+            repo.setFavorite(id, !station.isFavorite)
+        }
     }
 
     fun delete(station: Station) {

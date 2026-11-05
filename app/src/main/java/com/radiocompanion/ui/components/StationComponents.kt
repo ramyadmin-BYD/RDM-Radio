@@ -1,5 +1,6 @@
 package com.radiocompanion.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -36,10 +37,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -195,40 +200,78 @@ private fun statusLine(now: NowPlaying): String? = when {
     else -> now.streamTitle
 }
 
+/**
+ * Big player shown beside (landscape) or above (portrait) the station list.
+ * [isFavorite] is null when nothing bookmarkable is playing; the heart is hidden then.
+ */
 @Composable
 fun NowPlayingPanel(
     now: NowPlaying,
+    isFavorite: Boolean?,
+    onToggleFavorite: () -> Unit,
     onPrevious: () -> Unit,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(modifier, shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface) {
-        Column(
-            Modifier.fillMaxSize().padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            StationLogo(now.artworkUri?.toString(), size = 150.dp)
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    now.stationName.ifBlank { stringResource(R.string.np_pick_station) },
-                    style = MaterialTheme.typography.displaySmall,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    statusLine(now) ?: " ",
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = if (now.hasError) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2, overflow = TextOverflow.Ellipsis,
+        Box(Modifier.fillMaxSize()) {
+            Column(
+                Modifier.fillMaxSize().padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                StationLogo(now.artworkUri?.toString(), size = 150.dp)
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        now.stationName.ifBlank { stringResource(R.string.np_pick_station) },
+                        style = MaterialTheme.typography.displaySmall,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        // Keeps long names clear of the heart in the corner.
+                        modifier = Modifier.padding(horizontal = 56.dp),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        statusLine(now) ?: " ",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = if (now.hasError) MaterialTheme.colorScheme.error
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                TransportControls(now, onPrevious, onPlayPause, onNext, large = true)
+            }
+            if (isFavorite != null) {
+                FavoriteToggle(
+                    isFavorite = isFavorite,
+                    onToggle = onToggleFavorite,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
                 )
             }
-            TransportControls(now, onPrevious, onPlayPause, onNext, large = true)
         }
+    }
+}
+
+/** Large heart for bookmarking while driving: full car touch target, filled when saved. */
+@Composable
+fun FavoriteToggle(isFavorite: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
+    val haptics = LocalHapticFeedback.current
+    val scale by animateFloatAsState(if (isFavorite) 1.1f else 1f, label = "heartScale")
+    IconButton(
+        onClick = {
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            onToggle()
+        },
+        modifier = modifier.size(CarDimens.MinTouch),
+    ) {
+        Icon(
+            if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+            contentDescription = stringResource(if (isFavorite) R.string.cd_remove_favorite else R.string.cd_add_favorite),
+            tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(48.dp).scale(scale),
+        )
     }
 }
 

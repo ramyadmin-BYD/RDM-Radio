@@ -153,6 +153,8 @@ fun RadioScreen(
     val themeMode by vm.themeMode.collectAsStateWithLifecycle()
     val autoPlay by vm.autoPlayLastStation.collectAsStateWithLifecycle()
     val now by player.state.collectAsStateWithLifecycle()
+    val nowFavorite by vm.nowPlayingFavorite.collectAsStateWithLifecycle()
+    LaunchedEffect(now.stationId) { vm.setNowPlayingStation(now.stationId) }
     val diagnostics by StreamDiagnostics.entries.collectAsStateWithLifecycle()
     val eqState by vm.audioEffects.state.collectAsStateWithLifecycle()
     val updateState by vm.updates.state.collectAsStateWithLifecycle()
@@ -268,13 +270,15 @@ fun RadioScreen(
                     LayoutMode.Landscape -> Row(horizontalArrangement = Arrangement.spacedBy(CarDimens.Gutter)) {
                         stationsPane(Modifier.weight(1.5f).fillMaxHeight())
                         NowPlayingPanel(
-                            now, player::previous, player::togglePlayPause, player::next,
+                            now, nowFavorite, vm::toggleNowPlayingFavorite,
+                            player::previous, player::togglePlayPause, player::next,
                             Modifier.weight(1f).fillMaxHeight(),
                         )
                     }
                     LayoutMode.Portrait -> Column(verticalArrangement = Arrangement.spacedBy(CarDimens.Gutter)) {
                         NowPlayingPanel(
-                            now, player::previous, player::togglePlayPause, player::next,
+                            now, nowFavorite, vm::toggleNowPlayingFavorite,
+                            player::previous, player::togglePlayPause, player::next,
                             Modifier.fillMaxWidth().weight(0.42f),
                         )
                         stationsPane(Modifier.fillMaxWidth().weight(0.58f))

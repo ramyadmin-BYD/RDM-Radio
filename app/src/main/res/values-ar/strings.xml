@@ -188,7 +188,6 @@
     <string name="about_feature_eq">معادل صوتي من 10 نطاقات مع إعدادات جاهزة وتقوية الصوت وتعويض المستوى</string>
     <string name="about_feature_ui">مظهر داكن وفاتح، والعربية والإنجليزية، وتحديثات تلقائية</string>
     <string name="about_feature_car">مصمم لشاشة BYD DiLink 5.0: أفقي ورأسي وتقسيم الشاشة</string>
-    <string name="about_designed_by">تصميم</string>
-    <string name="about_designer">م. رامي عبد العزيز</string>
+    <string name="about_heading">تصميم م. رامي عبد العزيز</string>
     <string name="about_credits">دليل المحطات: radio-browser.info (مجتمعي). توفر البث يعتمد على كل محطة.</string>
 </resources>

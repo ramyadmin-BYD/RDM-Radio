@@ -41,6 +41,7 @@ class StationRepository(
 
     suspend fun favoriteCount(): Int = dao.favoriteCount()
     suspend fun getById(id: String): Station? = dao.getById(id)
+    fun observeById(id: String): Flow<Station?> = dao.observeById(id)
 
     /**
      * Merges the built-in stations from assets/stations.json (e.g. Nogoum FM).
