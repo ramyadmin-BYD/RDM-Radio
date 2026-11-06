@@ -6,7 +6,9 @@ Kotlin + Jetpack Compose + Media3/ExoPlayer.
 ## Features
 - Internet streaming only (no tuner/antenna needed).
 - **Clean header:** menu, **Favorites**, **home country** (Egypt), and the equalizer button.
+- **Opens on All stations**; Favorites is one tap away in the header.
 - **Side menu (☰):**
+  - Prayer: Prayer times & Azan, Ramadan Imsakiyya
   - Stations: Favorites, All stations
   - Station type: Official FM (online stream) / Online radio
   - Settings: home country, refresh, equalizer, theme, language, auto-play
@@ -24,6 +26,36 @@ Kotlin + Jetpack Compose + Media3/ExoPlayer.
 - **10-band equalizer** (31 Hz – 16 kHz) with presets, Loudness and volume compensation.
 - Background playback, reconnect after signal loss, audio focus for calls and navigation.
 - Layout adapts to landscape, portrait (rotating screen) and split-screen.
+- **Prayer times & Azan** (offline): see below.
+- **Ramadan 2027 (1448)**: Imsakiyya for 82 cities and a Ramadan look that turns on by itself.
+
+## Prayer times and Azan
+- Calculated offline from the city (or the car's GPS) with each country's official method:
+  Egyptian General Authority of Survey for Egypt, Umm al-Qura for Saudi Arabia, and so on.
+  Checked against the [adhan](https://github.com/batoulapps/adhan-js) library for every
+  built-in city in winter and summer: within 1 minute.
+- The next prayer shows in the header; tap it for today's times, the Ramadan table and settings.
+- At each enabled prayer the Azan plays: RDM Radio fades out, other apps (Bluetooth music, the
+  car radio) pause too, and afterwards your station comes back live with a fade-in. Press play,
+  or **Stop Azan** on the screen or in the notification, to end it early.
+- **Azan sound**, in order of preference:
+  1. A file or link chosen in Prayer times → Settings (USB drive or head-unit storage).
+  2. A recording bundled in the APK: put `azan.mp3` (and optionally `azan_fajr.mp3` for
+     Fajr) in `app/src/main/assets/azan/` and push; CI includes it in the next release.
+  3. The head unit's alarm sound, if neither of the above is available.
+- Alarms are exact (`USE_EXACT_ALARM`) and re-armed after the car starts or the clock changes.
+
+## Ramadan 2027 (Imsakiyya and theme)
+- `app/src/main/assets/ramadan_1448.json`: Imsak, Fajr, sunrise, Dhuhr, Asr, Maghrib (Iftar)
+  and Isha for every built-in city, 7 Feb – 10 Mar 2027. Expected start: **8 Feb 2027**,
+  29 days (Morocco 30). Imsak is 10 minutes before Fajr.
+- If the official moon sighting moves the start, change the `starts` entry for that country and
+  publish an update. To use an authority's published table, edit that city's rows; the unit
+  tests flag anything more than 5 minutes off the calculation. Regenerate with
+  `tools/imsakiyya/` (see its README).
+- During Ramadan the app switches to a night-blue and gold theme with a faint eight-pointed
+  star pattern, a "Ramadan Kareem" banner with Imsak and Iftar times, and the Imsakiyya in
+  the side menu. Prayer times → Settings → Ramadan look: Automatic (default), Always on, Off.
 
 ## Languages
 - English: `app/src/main/res/values/strings.xml` (default).
@@ -146,7 +178,9 @@ app/src/main/java/com/radiocompanion/
 ├── data/FmClassifier.kt        Official FM detection
 ├── data/remote/                radio-browser.info client, .pls/.m3u resolver
 ├── data/repository/            StationRepository (refresh, add, import/export)
-├── data/settings/              DataStore preferences (country, refresh time)
+├── data/settings/              DataStore preferences (country, refresh time, prayer settings)
+├── prayer/                     Prayer-time engine, cities, Ramadan Imsakiyya (pure Kotlin)
+├── azan/                       Azan alarm, receiver, AzanService, location, PrayerRepository
 ├── service/                    RadioPlaybackService (fallback logic), StreamHttp (headers),
 │                               StreamDiagnostics, PlayerConnection
 └── ui/                         MainActivity, RadioViewModel, RadioScreen, components, theme

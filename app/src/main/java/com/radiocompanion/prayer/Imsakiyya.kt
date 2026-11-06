@@ -78,11 +78,12 @@ class Imsakiyya(private val file: ImsakiyyaFile) {
         const val DEFAULT = "default"
 
         private val json = Json { ignoreUnknownKeys = true }
+        private val compactJson = Json { prettyPrint = false }
 
         fun parse(text: String): Imsakiyya = Imsakiyya(json.decodeFromString(ImsakiyyaFile.serializer(), text))
 
         fun encode(file: ImsakiyyaFile): String =
-            Json { prettyPrint = false }.encodeToString(ImsakiyyaFile.serializer(), file)
+            compactJson.encodeToString(ImsakiyyaFile.serializer(), file)
 
         private fun parseRow(day: Int, date: LocalDate, row: String): ImsakiyyaRow {
             val t = row.trim().split(' ').map(LocalTime::parse)
