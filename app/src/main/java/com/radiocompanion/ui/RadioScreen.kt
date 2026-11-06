@@ -84,6 +84,18 @@ import com.radiocompanion.model.Station
 import com.radiocompanion.service.PlayerConnection
 import com.radiocompanion.service.StreamDiagnostics
 import com.radiocompanion.ui.components.AboutDialog
+import com.radiocompanion.ui.components.AzanBanner
+import com.radiocompanion.ui.components.PrayerActions
+import com.radiocompanion.ui.components.PrayerChip
+import com.radiocompanion.ui.components.PrayerTab
+import com.radiocompanion.ui.components.PrayerTimesDialog
+import com.radiocompanion.ui.components.RamadanBanner
+import com.radiocompanion.azan.AzanState
+import com.radiocompanion.ui.theme.Crescent
+import com.radiocompanion.ui.theme.LocalRamadanTheme
+import com.radiocompanion.ui.theme.ramadanPattern
+import androidx.compose.material.icons.rounded.Brightness3
+import androidx.compose.material.icons.rounded.DateRange
 import com.radiocompanion.ui.components.AddStationDialog
 import com.radiocompanion.ui.components.ChoiceDialog
 import com.radiocompanion.ui.components.CountryDialog
@@ -123,6 +135,8 @@ private sealed interface DrawerAction {
     data object Import : DrawerAction
     data object Export : DrawerAction
     data object About : DrawerAction
+    data object PrayerTimes : DrawerAction
+    data object Imsakiyya : DrawerAction
 }
 
 /** Language tags offered in-app. "" = follow the system. */
@@ -142,8 +156,13 @@ fun RadioScreen(
     player: PlayerConnection,
     onImport: () -> Unit,
     onExport: () -> Unit,
+    onRequestCarLocation: () -> Unit,
+    onPickAzanSound: () -> Unit,
 ) {
     val stations by vm.stations.collectAsStateWithLifecycle()
+    val prayer by vm.prayer.collectAsStateWithLifecycle()
+    val azan by vm.azanState.collectAsStateWithLifecycle()
+    val ramadanLook = LocalRamadanTheme.current
     val filter by vm.filter.collectAsStateWithLifecycle()
     val country by vm.country.collectAsStateWithLifecycle()
     val refreshing by vm.refreshing.collectAsStateWithLifecycle()
@@ -172,6 +191,7 @@ fun RadioScreen(
     var showDiagnostics by rememberSaveable { mutableStateOf(false) }
     var showEqualizer by rememberSaveable { mutableStateOf(false) }
     var showAbout by rememberSaveable { mutableStateOf(false) }
+    var prayerTab by rememberSaveable { mutableStateOf<PrayerTab?>(null) }   // null = closed
     var showTheme by rememberSaveable { mutableStateOf(false) }
     var showLanguage by rememberSaveable { mutableStateOf(false) }
     var actionsFor by remember { mutableStateOf<Station?>(null) }
@@ -193,6 +213,8 @@ fun RadioScreen(
             DrawerAction.Import -> onImport()
             DrawerAction.Export -> onExport()
             DrawerAction.About -> showAbout = true
+            DrawerAction.PrayerTimes -> prayerTab = PrayerTab.TODAY
+            DrawerAction.Imsakiyya -> prayerTab = PrayerTab.RAMADAN
         }
     }
 
@@ -209,6 +231,9 @@ fun RadioScreen(
                 themeMode = themeMode,
                 autoPlay = autoPlay,
                 onAutoPlay = vm::setAutoPlayLastStation,
+                ramadanLook = ramadanLook,
+                inRamadan = prayer?.ramadanDay != null,
+                hijriYear = prayer?.ramadan?.hijriYear,
                 onAction = onDrawerAction,
             )
         },
@@ -217,9 +242,13 @@ fun RadioScreen(
             containerColor = MaterialTheme.colorScheme.background,
             snackbarHost = { SnackbarHost(snackbar) },
         ) { padding ->
+            val pattern = if (ramadanLook) {
+                Modifier.ramadanPattern(MaterialTheme.colorScheme.primary.copy(alpha = 0.07f))
+            } else Modifier
             BoxWithConstraints(
                 Modifier
                     .fillMaxSize()
+                    .then(pattern)
                     .padding(padding)
                     .padding(CarDimens.Gutter)
             ) {
@@ -241,8 +270,18 @@ fun RadioScreen(
                             onHomeCountry = vm::showHomeCountry,
                             eqEnabled = eqState.enabled,
                             onEqualizer = { showEqualizer = true },
+                            prayer = prayer.takeIf { mode != LayoutMode.Docked },
+                            onPrayer = { prayerTab = PrayerTab.TODAY },
                         )
                         Spacer(Modifier.height(16.dp))
+                        (azan as? AzanState.Playing)?.let { playing ->
+                            AzanBanner(playing, onStop = vm::stopAzan)
+                            Spacer(Modifier.height(12.dp))
+                        }
+                        prayer?.takeIf { it.ramadanDay != null && mode != LayoutMode.Docked }?.let { ui ->
+                            RamadanBanner(ui, onClick = { prayerTab = PrayerTab.RAMADAN })
+                            Spacer(Modifier.height(12.dp))
+                        }
                         when {
                             stations.isEmpty() && refreshing -> CenteredBox {
                                 CircularProgressIndicator(Modifier.size(64.dp))
@@ -343,6 +382,29 @@ fun RadioScreen(
             onDismiss = { showLanguage = false },
         )
     }
+    val prayerUi = prayer
+    val openTab = prayerTab
+    if (openTab != null && prayerUi != null) {
+        PrayerTimesDialog(
+            ui = prayerUi,
+            initialTab = openTab,
+            homeCountry = country,
+            actions = PrayerActions(
+                onAzanEnabled = vm::setAzanEnabled,
+                onTogglePrayer = vm::toggleAzanPrayer,
+                onPickCity = vm::setPrayerCity,
+                onUseCarLocation = onRequestCarLocation,
+                onStopCarLocation = vm::stopUsingCarLocation,
+                onMethod = vm::setPrayerMethod,
+                onAsr = vm::setAsrSchool,
+                onPickSoundFile = onPickAzanSound,
+                onSoundLink = vm::setAzanSound,
+                onTestAzan = vm::testAzan,
+                onRamadanTheme = vm::setRamadanTheme,
+            ),
+            onDismiss = { prayerTab = null },
+        )
+    }
     if (showAbout) {
         AboutDialog(versionName = BuildConfig.VERSION_NAME, onDismiss = { showAbout = false })
     }
@@ -422,6 +484,8 @@ private fun CleanHeader(
     onHomeCountry: () -> Unit,
     eqEnabled: Boolean,
     onEqualizer: () -> Unit,
+    prayer: PrayerUi?,
+    onPrayer: () -> Unit,
 ) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = onMenu, modifier = Modifier.size(CarDimens.MinTouch)) {
@@ -442,6 +506,10 @@ private fun CleanHeader(
             modifier = Modifier.weight(1f),
         )
         Spacer(Modifier.width(8.dp))
+        if (prayer != null) {
+            PrayerChip(prayer, onClick = onPrayer)
+            Spacer(Modifier.width(8.dp))
+        }
         // Equalizer: lit in the accent colour while it is on.
         IconButton(onClick = onEqualizer, modifier = Modifier.size(CarDimens.MinTouch)) {
             Icon(
@@ -480,6 +548,9 @@ private fun SideMenu(
     themeMode: ThemeMode,
     autoPlay: Boolean,
     onAutoPlay: (Boolean) -> Unit,
+    ramadanLook: Boolean,
+    inRamadan: Boolean,
+    hijriYear: Int?,
     onAction: (DrawerAction) -> Unit,
 ) {
     ModalDrawerSheet(Modifier.width(380.dp)) {
@@ -492,8 +563,30 @@ private fun SideMenu(
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 12.dp, bottom = 12.dp)) {
                 Icon(Icons.Rounded.Radio, null, Modifier.size(36.dp), tint = MaterialTheme.colorScheme.primary)
                 Spacer(Modifier.width(12.dp))
-                Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall)
+                Column {
+                    Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall)
+                    if (ramadanLook) {
+                        Text(
+                            stringResource(R.string.ramadan_kareem),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+                if (ramadanLook) {
+                    Spacer(Modifier.weight(1f))
+                    Crescent(MaterialTheme.colorScheme.primary, diameter = 40.dp)
+                }
             }
+
+            Section(stringResource(R.string.nav_section_prayer))
+            Item(stringResource(R.string.nav_prayer_times), Icons.Rounded.Brightness3, false) {
+                onAction(DrawerAction.PrayerTimes)
+            }
+            Item(
+                hijriYear?.let { stringResource(R.string.nav_imsakiyya, it) } ?: stringResource(R.string.nav_imsakiyya_plain),
+                Icons.Rounded.DateRange, selected = inRamadan,
+            ) { onAction(DrawerAction.Imsakiyya) }
 
             Section(stringResource(R.string.nav_section_stations))
             Item(stringResource(R.string.nav_favorites), Icons.Rounded.Favorite, filter == StationFilter.FAVORITES) {

@@ -10,6 +10,17 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.radiocompanion.RadioCompanionApp
+import com.radiocompanion.azan.AzanService
+import com.radiocompanion.azan.AzanState
+import com.radiocompanion.azan.CarLocation
+import com.radiocompanion.azan.PrayerPlace
+import com.radiocompanion.data.settings.RamadanThemeMode
+import com.radiocompanion.prayer.AsrSchool
+import com.radiocompanion.prayer.CalcMethod
+import com.radiocompanion.prayer.ImsakiyyaRow
+import com.radiocompanion.prayer.Prayer
+import com.radiocompanion.prayer.PrayerDay
+import com.radiocompanion.prayer.RamadanPeriod
 import com.radiocompanion.data.remote.PlaylistResolver
 import com.radiocompanion.data.repository.NewStation
 import com.radiocompanion.R
@@ -31,13 +42,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.Instant
+import java.time.ZonedDateTime
 import java.util.Locale
 
 enum class StationFilter { FAVORITES, ALL }
@@ -47,6 +64,21 @@ enum class RegionFilter { ALL, LOCAL, REGIONAL, INTERNATIONAL }
 
 /** Category 2 filter. ALL = no filter. */
 enum class TypeFilter { ALL, OFFICIAL_FM, ONLINE }
+
+/** Everything the prayer-time chip, banners and screen show, refreshed every minute. */
+data class PrayerUi(
+    val place: PrayerPlace,
+    val now: Instant,
+    val today: PrayerDay,
+    /** Next of the six times (sunrise included). */
+    val next: Pair<Prayer, ZonedDateTime>,
+    val ramadan: RamadanPeriod,
+    /** 1-based day of Ramadan today, or null outside the month. */
+    val ramadanDay: Int?,
+    val imsakiyya: List<ImsakiyyaRow>,
+) {
+    val todayRow: ImsakiyyaRow? get() = ramadanDay?.let { imsakiyya.getOrNull(it - 1) }
+}
 
 /** Country name in the given language (the UI passes the screen's locale, so it follows Arabic/English). */
 fun countryDisplayName(code: String, inLocale: Locale = Locale.getDefault()): String =
@@ -62,7 +94,8 @@ class RadioViewModel(private val app: RadioCompanionApp) : ViewModel() {
     val audioEffects = app.audioEffects
     private val settings = app.settings
 
-    private val _filter = MutableStateFlow(StationFilter.FAVORITES)
+    // Opens on "All stations"; favorites are one tap away in the header.
+    private val _filter = MutableStateFlow(StationFilter.ALL)
     val filter: StateFlow<StationFilter> = _filter.asStateFlow()
 
     val country: StateFlow<String> =
@@ -127,7 +160,6 @@ class RadioViewModel(private val app: RadioCompanionApp) : ViewModel() {
     init {
         viewModelScope.launch {
             repo.syncBundledStations(settings.bundledStationsHash())?.let { settings.setBundledStationsHash(it) }
-            if (repo.favoriteCount() == 0) showHomeCountry()
             if (settings.isRefreshDue()) refreshNow(settings.countryCode.first(), quiet = true)
         }
     }
@@ -202,6 +234,110 @@ class RadioViewModel(private val app: RadioCompanionApp) : ViewModel() {
         } finally {
             _refreshing.value = false
         }
+    }
+
+    // ---- Prayer times, Azan and Ramadan
+
+    private val prayers = app.prayers
+
+    /** Emits now, then at the start of every minute. */
+    private val minuteTicks: Flow<Instant> = flow {
+        while (true) {
+            val now = Instant.now()
+            emit(now)
+            delay(60_000L - now.toEpochMilli() % 60_000L + 50L)
+        }
+    }
+
+    val prayer: StateFlow<PrayerUi?> = prayers.place
+        .flatMapLatest { place ->
+            val rows = prayers.imsakiyyaRows(place)   // once per place, not every minute
+            minuteTicks.map { now ->
+                val date = now.atZone(place.zone).toLocalDate()
+                val period = prayers.ramadan(place)
+                PrayerUi(
+                    place = place,
+                    now = now,
+                    today = prayers.day(place, date),
+                    next = prayers.nextTime(place, now),
+                    ramadan = period,
+                    ramadanDay = period.dayNumber(date),
+                    imsakiyya = rows,
+                )
+            }
+        }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** Ramadan colours and patterns: automatic during the month, or forced on/off. */
+    val ramadanThemeActive: StateFlow<Boolean> =
+        combine(settings.prayer.map { it.ramadanTheme }, prayer) { mode, ui ->
+            when (mode) {
+                RamadanThemeMode.ALWAYS -> true
+                RamadanThemeMode.OFF -> false
+                RamadanThemeMode.AUTO -> ui?.ramadanDay != null
+            }
+        }.distinctUntilChanged().stateIn(viewModelScope, SharingStarted.Eagerly, false)
+
+    val azanState: StateFlow<AzanState> = app.azanCoordinator.state
+
+    fun setAzanEnabled(on: Boolean) {
+        viewModelScope.launch { settings.setAzanEnabled(on) }
+    }
+
+    fun toggleAzanPrayer(prayer: Prayer) {
+        viewModelScope.launch {
+            val current = settings.prayer.first().azanPrayers
+            settings.setAzanPrayers(if (prayer in current) current - prayer else current + prayer)
+        }
+    }
+
+    fun setPrayerCity(id: String) {
+        viewModelScope.launch { settings.setPrayerCity(id) }
+    }
+
+    fun setPrayerMethod(method: CalcMethod?) {
+        viewModelScope.launch { settings.setPrayerMethod(method) }
+    }
+
+    fun setAsrSchool(school: AsrSchool) {
+        viewModelScope.launch { settings.setAsrSchool(school) }
+    }
+
+    fun setAzanSound(uri: String?) {
+        viewModelScope.launch {
+            settings.setAzanSound(uri)
+            message(UiText(if (uri == null) R.string.msg_azan_sound_default else R.string.msg_azan_sound_set))
+        }
+    }
+
+    fun setRamadanTheme(mode: RamadanThemeMode) {
+        viewModelScope.launch { settings.setRamadanTheme(mode) }
+    }
+
+    /** Call after the location permission was granted. */
+    fun useCarLocation() {
+        viewModelScope.launch {
+            val fix = CarLocation.fetch(app)
+            if (fix == null) {
+                message(UiText(R.string.msg_location_failed))
+            } else {
+                settings.setPrayerGps(fix)
+                message(UiText(R.string.msg_location_set))
+            }
+        }
+    }
+
+    fun stopUsingCarLocation() {
+        viewModelScope.launch { settings.setPrayerUseGps(false) }
+    }
+
+    fun testAzan() {
+        AzanService.start(app, prayer = null)
+    }
+
+    fun stopAzan() {
+        AzanService.stop(app)
     }
 
     fun toggleFavorite(station: Station) {

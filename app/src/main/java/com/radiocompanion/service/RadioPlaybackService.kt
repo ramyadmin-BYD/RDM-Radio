@@ -32,13 +32,16 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.radiocompanion.R
 import com.radiocompanion.RadioCompanionApp
+import com.radiocompanion.azan.AzanInterruptible
 import com.radiocompanion.model.UiText
 import com.radiocompanion.model.streamCandidates
 import com.radiocompanion.ui.MainActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.guava.future
 import kotlinx.coroutines.launch
 
@@ -54,6 +57,8 @@ import kotlinx.coroutines.launch
  * - Every failure and switch is written to [StreamDiagnostics].
  * - Exposes stations as a browse tree for the system media center and restores
  *   the last station after the process was killed.
+ * - Steps aside for the Azan ([AzanInterruptible]): fades out, then comes back on a
+ *   fresh live connection when the Azan ends.
  */
 @OptIn(UnstableApi::class)
 class RadioPlaybackService : MediaLibraryService() {
@@ -77,6 +82,11 @@ class RadioPlaybackService : MediaLibraryService() {
     private var readyOnThisUrl = false
     private var pendingAction: Runnable? = null
     private var internalSwitchUrl: String? = null   // set while we swap in a backup URL
+
+    // ---- Azan interruption
+    private var pausedForAzan = false
+    private var fadeInPending = false
+    private var fadeJob: Job? = null
 
     private val bufferingWatchdog = Runnable {
         if (player.playbackState == Player.STATE_BUFFERING && player.playWhenReady && !readyOnThisUrl && isOnline()) {
@@ -143,6 +153,7 @@ class RadioPlaybackService : MediaLibraryService() {
             .build()
 
         getSystemService(ConnectivityManager::class.java)?.registerDefaultNetworkCallback(networkCallback)
+        app.azanCoordinator.radio = azanHook
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? = session
@@ -154,6 +165,7 @@ class RadioPlaybackService : MediaLibraryService() {
     }
 
     override fun onDestroy() {
+        if (app.azanCoordinator.radio === azanHook) app.azanCoordinator.radio = null
         runCatching {
             getSystemService(ConnectivityManager::class.java)?.unregisterNetworkCallback(networkCallback)
         }
@@ -188,6 +200,7 @@ class RadioPlaybackService : MediaLibraryService() {
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             // The user pressed play again after we gave up: start over with fresh counters.
             if (playWhenReady && reason == Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST) {
+                pausedForAzan = false   // the user restarted it during the Azan
                 fullCycles = 0
                 retriesOnThisUrl = 0
                 backoffStep = 0
@@ -203,6 +216,10 @@ class RadioPlaybackService : MediaLibraryService() {
                 Player.STATE_READY -> {
                     main.removeCallbacks(bufferingWatchdog)
                     if (!readyOnThisUrl) onUrlWorks()
+                    if (fadeInPending) {
+                        fadeInPending = false
+                        fadeJob = scope.launch { fadeVolume(to = 1f, durationMs = FADE_IN_MS) }
+                    }
                 }
                 else -> main.removeCallbacks(bufferingWatchdog)
             }
@@ -351,6 +368,48 @@ class RadioPlaybackService : MediaLibraryService() {
         }
     }
 
+    // ---------------------------------------------------------------- Azan
+
+    private val azanHook = object : AzanInterruptible {
+        override suspend fun pauseForAzan(): Boolean {
+            if (!player.playWhenReady || player.mediaItemCount == 0) return false
+            fadeJob?.cancel()
+            fadeInPending = false
+            if (player.isPlaying) fadeVolume(to = 0f, durationMs = FADE_OUT_MS)
+            cancelPending()
+            // pause() so the UI shows "paused"; stop() drops the live buffer, so the
+            // station comes back at the current moment instead of minutes behind.
+            player.pause()
+            player.stop()
+            player.volume = 1f
+            pausedForAzan = true
+            return true
+        }
+
+        override fun resumeAfterAzan() {
+            if (!pausedForAzan) return
+            pausedForAzan = false
+            if (player.playWhenReady || player.mediaItemCount == 0) return   // already restarted
+            readyOnThisUrl = false
+            retriesOnThisUrl = 0
+            backoffStep = 0
+            fullCycles = 0
+            player.volume = 0f
+            fadeInPending = true   // fade in once audio actually starts (see STATE_READY)
+            player.prepare()
+            player.play()
+        }
+    }
+
+    private suspend fun fadeVolume(to: Float, durationMs: Long) {
+        val from = player.volume
+        val steps = 20
+        for (i in 1..steps) {
+            player.volume = from + (to - from) * i / steps
+            delay(durationMs / steps)
+        }
+    }
+
     // ---------------------------------------------------------------- session callback
 
     private inner class LibraryCallback : MediaLibrarySession.Callback {
@@ -448,5 +507,7 @@ class RadioPlaybackService : MediaLibraryService() {
         const val RETRIES_PER_URL = 2
         const val MAX_FULL_CYCLES = 2
         const val STARTUP_TIMEOUT_MS = 20_000L
+        const val FADE_OUT_MS = 1_500L
+        const val FADE_IN_MS = 2_500L
     }
 }

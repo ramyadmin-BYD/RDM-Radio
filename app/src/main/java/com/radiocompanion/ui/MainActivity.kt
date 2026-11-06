@@ -25,6 +25,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.radiocompanion.R
 import com.radiocompanion.RadioCompanionApp
+import com.radiocompanion.azan.CarLocation
 import com.radiocompanion.data.settings.ThemeMode
 import com.radiocompanion.model.UiText
 import com.radiocompanion.service.PlayerConnection
@@ -55,6 +56,21 @@ class MainActivity : AppCompatActivity() {
             if (uri != null) vm.importFrom(uri)
         }
 
+    private val locationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
+            if (granted.values.any { it }) vm.useCarLocation() else vm.message(UiText(R.string.msg_location_denied))
+        }
+
+    /** Azan recording from a USB drive or the head unit's storage; kept readable across restarts. */
+    private val azanSoundPicker =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri == null) return@registerForActivityResult
+            runCatching {
+                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            vm.setAzanSound(uri.toString())
+        }
+
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* optional */ }
 
@@ -74,6 +90,7 @@ class MainActivity : AppCompatActivity() {
 
         setContent {
             val themeMode by vm.themeMode.collectAsStateWithLifecycle()
+            val ramadan by vm.ramadanThemeActive.collectAsStateWithLifecycle()
             val dark = when (themeMode) {
                 ThemeMode.DARK -> true
                 ThemeMode.LIGHT -> false
@@ -89,12 +106,14 @@ class MainActivity : AppCompatActivity() {
                 )
                 onDispose {}
             }
-            CarRadioTheme(darkTheme = dark) {
+            CarRadioTheme(darkTheme = dark, ramadan = ramadan) {
                 RadioScreen(
                     vm = vm,
                     player = player,
                     onImport = ::launchImport,
                     onExport = ::launchExport,
+                    onRequestCarLocation = ::requestCarLocation,
+                    onPickAzanSound = ::launchAzanSoundPicker,
                 )
             }
         }
@@ -150,6 +169,24 @@ class MainActivity : AppCompatActivity() {
             importLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream"))
         } catch (e: ActivityNotFoundException) {
             vm.message(UiText(R.string.msg_no_file_picker))
+        }
+    }
+
+    private fun requestCarLocation() {
+        if (CarLocation.hasPermission(this)) {
+            vm.useCarLocation()
+        } else {
+            locationPermission.launch(
+                arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION)
+            )
+        }
+    }
+
+    private fun launchAzanSoundPicker() {
+        try {
+            azanSoundPicker.launch(arrayOf("audio/*"))
+        } catch (e: ActivityNotFoundException) {
+            vm.message(UiText(R.string.msg_no_file_picker_azan))
         }
     }
 

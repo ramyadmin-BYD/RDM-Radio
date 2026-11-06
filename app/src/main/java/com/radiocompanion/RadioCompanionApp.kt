@@ -5,6 +5,9 @@ import androidx.room.Room
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.memory.MemoryCache
+import com.radiocompanion.azan.AzanCoordinator
+import com.radiocompanion.azan.AzanScheduler
+import com.radiocompanion.azan.PrayerRepository
 import com.radiocompanion.data.local.AppDatabase
 import com.radiocompanion.data.remote.PlaylistResolver
 import com.radiocompanion.data.remote.RadioBrowserApi
@@ -13,6 +16,11 @@ import com.radiocompanion.data.settings.SettingsStore
 import com.radiocompanion.service.StreamDiagnostics
 import com.radiocompanion.service.audio.AudioEffectsController
 import com.radiocompanion.update.UpdateManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -58,6 +66,14 @@ class RadioCompanionApp : Application(), ImageLoaderFactory {
     /** Equalizer / Loudness / makeup gain, shared by the playback service and the UI. */
     val audioEffects: AudioEffectsController by lazy { AudioEffectsController(this, settings) }
 
+    /** Prayer times, Ramadan timetable and the Azan. */
+    val prayers: PrayerRepository by lazy { PrayerRepository(this, settings) }
+    val azanScheduler: AzanScheduler by lazy { AzanScheduler(this, prayers) }
+    val azanCoordinator = AzanCoordinator()
+
+    /** App-lifetime work (keeping the next Azan alarm in sync with the settings). */
+    val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
     val repository: StationRepository by lazy {
         StationRepository(
             context = this,
@@ -71,6 +87,8 @@ class RadioCompanionApp : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         StreamDiagnostics.logContext = this
+        // Any change of city, method or enabled prayers re-arms the next Azan.
+        prayers.place.onEach { runCatching { azanScheduler.reschedule() } }.launchIn(appScope)
     }
 
     /** True once this app process has auto-started the last station (only once per launch). */

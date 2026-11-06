@@ -31,6 +31,21 @@
     <!-- In-app updates from GitHub Releases (Android asks the user to allow it once) -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
+    <!-- ===== Prayer times & Azan ===== -->
+    <!-- Azan at the exact minute. USE_EXACT_ALARM is granted automatically on Android 13+;
+         SCHEDULE_EXACT_ALARM covers Android 12 (pre-granted there). -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission
+        android:name="android.permission.SCHEDULE_EXACT_ALARM"
+        android:maxSdkVersion="32" />
+    <!-- Re-arm the next Azan when the car starts (the head unit boots) -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Optional "use car location" for prayer times; asked only when switched on -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-feature android:name="android.hardware.location" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+
 
     <!--
         Cleartext (http://) streams: many Egyptian/Arab Icecast servers have no HTTPS.
@@ -121,6 +136,25 @@
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
+
+        <!-- Plays the Azan: pauses the radio (and other apps), then hands the audio back. -->
+        <service
+            android:name=".azan.AzanService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <!-- Azan alarm; boot / clock changes re-arm it. -->
+        <receiver
+            android:name=".azan.AzanReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Result of installing an update (PackageInstaller callback) -->
         <receiver

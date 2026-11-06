@@ -67,7 +67,7 @@ private fun isHttpUrl(text: String) =
     text.trim().let { it.startsWith("http://", true) || it.startsWith("https://", true) }
 
 @Composable
-private fun DialogButton(text: String, enabled: Boolean = true, onClick: () -> Unit) {
+internal fun DialogButton(text: String, enabled: Boolean = true, onClick: () -> Unit) {
     TextButton(onClick = onClick, enabled = enabled, modifier = Modifier.heightIn(min = 56.dp)) {
         Text(text, style = MaterialTheme.typography.labelLarge)
     }
@@ -341,6 +341,7 @@ fun AboutDialog(versionName: String, onDismiss: () -> Unit) {
         R.string.about_feature_autoplay,
         R.string.about_feature_reliability,
         R.string.about_feature_eq,
+        R.string.about_feature_prayer,
         R.string.about_feature_ui,
         R.string.about_feature_car,
     )
