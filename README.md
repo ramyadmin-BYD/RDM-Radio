@@ -3,7 +3,7 @@
 Internet radio for the BYD Song L and other DiLink 5.0 head units: Egyptian, Arab and
 international stations, prayer times with the Azan, and the Ramadan Imsakiyya.
 
-This repository only publishes the app. It contains no source code.
+This repository only publishes the app and its station artwork (`artwork/`). It contains no source code.
 
 ## Install
 1. Open the [latest release](../../releases/latest) on the car (or a USB drive).
